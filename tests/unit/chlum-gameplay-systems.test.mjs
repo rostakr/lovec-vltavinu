@@ -44,7 +44,7 @@ test("DigSystem rejects alternate hit counts and completes on the third successf
   assert.throws(() => new DigSystem({ requiredHits: 4 }), /literal 3/);
 
   const dig = new DigSystem({ events, speed: 1.25 });
-  assert.equal(dig.start("chlum-dig-site"), true);
+  assert.equal(dig.start("nesmen-profile-1"), true);
   for (let index = 1; index <= 3; index++) {
     dig.update(0.4);
     const result = dig.strike();
@@ -54,7 +54,7 @@ test("DigSystem rejects alternate hit counts and completes on the third successf
   }
   assert.equal(hits.length, 3);
   assert.equal(hits.every(event => event.requiredHits === 3), true);
-  assert.deepEqual(complete, [{ spot: "chlum-dig-site", hits: 3 }]);
+  assert.deepEqual(complete, [{ spot: "nesmen-profile-1", hits: 3, misses: 0, clean: true }]);
   assert.equal(dig.strike(), null);
   assert.equal(dig.finish().hits, 3);
 });
@@ -68,12 +68,12 @@ test("ObjectiveSystem writes permission and one finding to GameSession without o
   const session = createGameSession();
   const objective = new ObjectiveSystem({ events, session, levelId: "chlum" });
 
-  assert.equal(objective.update({ digHits: 3 }).complete, false);
+  assert.equal(objective.update({ searched: true }).complete, false);
   assert.equal(objective.grantPermission(), true);
-  assert.equal(objective.update({ digHits: 2 }).complete, false);
-  assert.equal(objective.update({ digHits: 3 }).complete, false);
+  assert.equal(objective.update({ searched: false }).complete, false);
+  assert.equal(objective.update({ searched: true }).complete, false);
   objective.recordFinding({ findingId: "chlum-1", locality: "chlum", rarity: "B", weight: 1.2, score: 90 });
-  const result = objective.update({ digHits: 3 });
+  const result = objective.update({ searched: true });
 
   assert.equal(result.complete, true);
   assert.equal(session.state.findings.length, 1);

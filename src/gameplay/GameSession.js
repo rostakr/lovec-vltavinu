@@ -1,4 +1,5 @@
 import { getLevelDefinition, getNextLevelId } from "../data/levels.js";
+import { createSessionSeed } from "./SessionRng.js";
 
 const PHASES = new Set(["briefing", "playing", "digging", "paused", "complete", "finale"]);
 const RARITIES = new Set(["A", "B", "C"]);
@@ -29,6 +30,7 @@ function initialObjective(level) {
 function createInitialState() {
   const level = getLevelDefinition("chlum");
   return deepFreeze({
+    seed: createSessionSeed(),
     levelId: level.id,
     phase: "briefing",
     findings: [],

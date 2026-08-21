@@ -85,6 +85,10 @@ export class ThreeRenderer extends HybridRenderer {
     return true;
   }
 
+  getVisual(entity) {
+    return this.objectByEntity.get(entity) ?? null;
+  }
+
   syncWorld(world, alpha = 1) {
     for (const [entity, transform] of world.query("transform")) {
       const object = this.objectByEntity.get(entity);

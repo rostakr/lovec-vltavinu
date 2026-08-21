@@ -13,7 +13,7 @@ export class ChlumNesmenBridgeScene extends ChlumScene {
       score: this.session.state.score,
       stats: [
         { label: "POVOLENÍ", value: "ANO" },
-        { label: "ZÁSAHY", value: `${this.digHits}/3` },
+        { label: "RADAR", value: `${this.radarPulseCount}×` },
         { label: "NÁLEZY", value: this.session.state.findings.length }
       ],
       buttonLabel: "POKRAČOVAT DO NESMĚNĚ",

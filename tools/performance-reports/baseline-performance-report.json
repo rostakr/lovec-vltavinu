@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "label": "baseline",
+  "generatedAt": "2026-07-30T16:55:00.000Z",
+  "headSha": "15932fbeb8dbb42aef36eb7e3ca6b83a42c8aada",
+  "source": {
+    "workflowRunId": 30551208657,
+    "workflowRunNumber": 1049,
+    "artifactId": 8763122037,
+    "artifactName": "playwright-report",
+    "artifactDigest": "sha256:d91e3a9380a2c8d7e9b820fa99712b401e283d91e43f94d9cbf109b821aadce9"
+  },
+  "fullFlowTimeoutMs": 480000,
+  "profiles": {
+    "desktop-chromium": {
+      "fullFlow": { "testDurationMs": 305160, "withinLimit": true },
+      "probe": { "status": "not-measured", "reason": "Checkout/browser probe could not be executed in the agent runtime because outbound DNS to GitHub was unavailable." }
+    },
+    "iphone-portrait": {
+      "fullFlow": { "testDurationMs": 476129, "withinLimit": true },
+      "probe": { "status": "not-measured", "reason": "Checkout/browser probe could not be executed in the agent runtime because outbound DNS to GitHub was unavailable." }
+    },
+    "iphone-landscape": {
+      "fullFlow": { "testDurationMs": 363913, "withinLimit": true },
+      "probe": { "status": "not-measured", "reason": "Checkout/browser probe could not be executed in the agent runtime because outbound DNS to GitHub was unavailable." }
+    }
+  },
+  "limitations": [
+    "DPR was not measured.",
+    "Internal renderer resolution was not measured.",
+    "Audio resource timing was not measured.",
+    "Frame-time p50/p95 was not measured."
+  ]
+}

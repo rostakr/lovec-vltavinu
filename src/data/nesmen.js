@@ -26,7 +26,7 @@ const entities = [
       animation: {
         clip: "walk",
         frames: [0, 1, 2, 3],
-        fps: 8,
+        fps: 6,
         loop: true,
         playing: false,
         index: 0,
@@ -35,7 +35,9 @@ const entities = [
         frame: 0,
         motionDriven: true,
         motionThreshold: 0.001,
-        resetOnIdle: true
+        resetOnIdle: true,
+        direction: "down",
+        directionFrames: { down: [0, 1, 2, 3], left: [4, 5, 6, 7], right: [8, 9, 10, 11], up: [12, 13, 14, 15] }
       },
       collider: { shape: "circle", radius: 18, layer: "player", mask: [] },
       player: { speed: 220 }

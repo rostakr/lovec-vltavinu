@@ -15,9 +15,36 @@ const read = relativePath => {
   if (!exists(relativePath)) { fail(`Chybí soubor: ${relativePath}`); return ""; }
   return fs.readFileSync(absolute(relativePath), "utf8");
 };
+const countMatches = (source, pattern) => [...source.matchAll(pattern)].length;
 
 const requiredFiles = ["index.html", "style.css", "manifest.webmanifest", "sw.js", "icon-180.png", "icon-192.png", "icon-512.png", "vendor/three.module.min.js", "src/bootstrap.js", "assets/manifests/assets.json"];
 requiredFiles.forEach(relativePath => { if (!exists(relativePath)) fail(`Chybí povinný soubor: ${relativePath}`); });
+const forbiddenLegacyFiles = [
+  "game.js",
+  "runtime-stability.js",
+  "audio.js",
+  "data.js",
+  "src/adapters/LegacySaveAdapter.js",
+  "src/adapters/LegacyDataAdapter.js",
+  "src/state/GameState.js",
+  "src/domain/index.js"
+];
+forbiddenLegacyFiles.forEach(relativePath => { if (exists(relativePath)) fail(`Legacy runtime soubor nesmí existovat: ${relativePath}`); });
+
+// Save systém se v cílové architektuře nevyvíjí: persistence nesmí být ani v modulu mimo runtime graf.
+const collectSourceFiles = (directory, collected = []) => {
+  for (const entry of fs.readdirSync(absolute(directory), { withFileTypes: true })) {
+    const child = `${directory}/${entry.name}`;
+    if (entry.isDirectory()) collectSourceFiles(child, collected);
+    else if (entry.name.endsWith(".js")) collected.push(child);
+  }
+  return collected;
+};
+const sourceFiles = exists("src") ? collectSourceFiles("src") : [];
+const persistenceOffenders = sourceFiles.filter(relativePath => /localStorage|sessionStorage|indexedDB/.test(read(relativePath)));
+if (persistenceOffenders.length) fail(`Zdrojové moduly nesmí obsahovat persistence vrstvu: ${persistenceOffenders.join(", ")}.`);
+const distributionArchives = fs.readdirSync(root).filter(entry => entry.endsWith(".zip"));
+if (distributionArchives.length) fail(`ZIP balíček není předáním práce a nesmí být v repozitáři: ${distributionArchives.join(", ")}.`);
 const html = read("index.html");
 const serviceWorker = read("sw.js");
 const manifestText = read("manifest.webmanifest");
@@ -31,12 +58,14 @@ if (scripts.length !== 1 || scripts[0]?.path !== "src/bootstrap.js" || !/type=["
 if (/src=["']\.\/(?:game|runtime-stability)\.js["']/.test(html)) fail("index.html stále spouští legacy gameplay runtime.");
 
 const runtimeModules = new Set();
+const runtimeModuleSources = new Map();
 const queue = ["src/bootstrap.js"];
 while (queue.length) {
   const relativePath = queue.shift();
   if (runtimeModules.has(relativePath)) continue;
   runtimeModules.add(relativePath);
   const source = read(relativePath);
+  runtimeModuleSources.set(relativePath, source);
   const imports = [...source.matchAll(/(?:import|export)\s*(?:[^"']*?\s*from\s*)?["']([^"']+)["']/g)].map(match => match[1]);
   for (const specifier of imports) {
     if (!specifier.startsWith(".")) { fail(`Runtime používá nepřipnutý bare import v ${relativePath}: ${specifier}`); continue; }
@@ -45,10 +74,37 @@ while (queue.length) {
     else if (resolved.endsWith(".js")) queue.push(resolved);
   }
 }
-const runtimeSource = [...runtimeModules].filter(relativePath => relativePath.endsWith(".js")).map(relativePath => read(relativePath)).join("\n");
+const runtimeSource = [...runtimeModuleSources.values()].join("\n");
+const firstPartyRuntimeEntries = [...runtimeModuleSources].filter(([relativePath]) => relativePath.startsWith("src/") && relativePath.endsWith(".js"));
+const firstPartyRuntimeSource = firstPartyRuntimeEntries.map(([, source]) => source).join("\n");
+if (/(?:game|runtime-stability)\.js/.test(runtimeSource)) fail("Produkční bootstrap importuje legacy runtime soubor.");
+if (/getContext\s*\(\s*["']2d["']/.test(firstPartyRuntimeSource)) fail("Produkční bootstrap obsahuje zakázanou Canvas2D herní cestu.");
 if (/LegacySaveAdapter|localStorage|sessionStorage/.test(runtimeSource)) fail("Produkční bootstrap importuje nebo používá zakázanou persistence/save vrstvu.");
-const rendererConstructors = [...runtimeSource.matchAll(/new\s+THREE\.WebGLRenderer\s*\(/g)].length;
+
+const webglOwnerPaths = firstPartyRuntimeEntries
+  .filter(([, source]) => /new\s+THREE\.WebGLRenderer\s*\(/.test(source))
+  .map(([relativePath]) => relativePath);
+const rendererConstructors = countMatches(firstPartyRuntimeSource, /new\s+THREE\.WebGLRenderer\s*\(/g);
 if (rendererConstructors !== 1) fail(`Runtime musí vlastnit právě jeden WebGLRenderer; nalezeno: ${rendererConstructors}.`);
+if (webglOwnerPaths.length !== 1 || webglOwnerPaths[0] !== "src/render/HybridRenderer.js") {
+  fail(`Jediný konstrukční bod WebGLRenderer musí být src/render/HybridRenderer.js; nalezeno: ${webglOwnerPaths.join(", ") || "žádný"}.`);
+}
+const directHybridInstances = countMatches(firstPartyRuntimeSource, /new\s+HybridRenderer\s*\(/g);
+if (directHybridInstances !== 0) fail(`HybridRenderer je interní základ a nesmí být přímo instancován; nalezeno: ${directHybridInstances}.`);
+const hybridSubclassPaths = firstPartyRuntimeEntries
+  .filter(([, source]) => /class\s+\w+\s+extends\s+HybridRenderer\b/.test(source))
+  .map(([relativePath]) => relativePath);
+if (hybridSubclassPaths.length !== 1 || hybridSubclassPaths[0] !== "src/render/ThreeRenderer.js") {
+  fail(`Jediným potomkem HybridRenderer musí být src/render/ThreeRenderer.js; nalezeno: ${hybridSubclassPaths.join(", ") || "žádný"}.`);
+}
+const bootstrapSource = runtimeModuleSources.get("src/bootstrap.js") ?? "";
+const bootstrapThreeRenderers = countMatches(bootstrapSource, /new\s+ThreeRenderer\s*\(/g);
+if (bootstrapThreeRenderers !== 1) fail(`bootstrap.js musí vytvořit právě jeden ThreeRenderer; nalezeno: ${bootstrapThreeRenderers}.`);
+const unauthorizedBootstrapRenderers = [...bootstrapSource.matchAll(/new\s+(\w*Renderer)\s*\(/g)]
+  .map(match => match[1])
+  .filter(name => name !== "ThreeRenderer");
+if (unauthorizedBootstrapRenderers.length) fail(`bootstrap.js vytváří nepovolený renderer: ${unauthorizedBootstrapRenderers.join(", ")}.`);
+
 const referencedIds = new Set([...[...runtimeSource.matchAll(/getElementById\(["']([^"']+)["']\)/g)].map(match => match[1]), ...[...runtimeSource.matchAll(/\.element\(["']([^"']+)["']\)/g)].map(match => match[1])]);
 const missingIds = [...referencedIds].filter(id => !htmlIdSet.has(id)).sort();
 if (missingIds.length) fail(`Runtime odkazuje na chybějící HTML ID: ${missingIds.join(", ")}`);
@@ -72,6 +128,7 @@ for (const relativePath of ["index.html", "style.css", "manifest.webmanifest", "
 let assetManifest = null;
 let chlumAssetCount = 0;
 let nesmenAssetCount = 0;
+let deadAssetIds = [];
 try { assetManifest = JSON.parse(assetManifestText); } catch (error) { fail(`Neplatný asset manifest: ${error.message}`); }
 if (!Array.isArray(assetManifest)) fail("Asset manifest musí být pole.");
 else {
@@ -101,9 +158,14 @@ else {
       if (!(entry.metrics?.triangles <= entry.budget?.triangles)) fail(`GLB asset ${entry.id} překračuje triangle budget.`);
     }
   }
+  // Preload je čistý kontrakt: co runtime nikdy nepoužije, nesmí se stahovat ani cachovat.
+  deadAssetIds = assetManifest
+    .filter(entry => entry?.id && !runtimeSource.includes(`"${entry.id}"`) && !runtimeSource.includes(`'${entry.id}'`))
+    .map(entry => entry.id);
+  if (deadAssetIds.length) fail(`Manifest preloaduje assety, které produkční runtime nikdy nepoužije: ${deadAssetIds.join(", ")}.`);
   chlumAssetCount = assetManifest.filter(entry => entry.preload === "common" || entry.preload === "level:chlum").length;
   nesmenAssetCount = assetManifest.filter(entry => entry.preload === "level:nesmen").length;
-  if (chlumAssetCount !== 11) fail(`Chlum/common preload musí obsahovat 11 assetů; nalezeno: ${chlumAssetCount}.`);
+  if (chlumAssetCount !== 15) fail(`Chlum/common preload musí obsahovat 15 assetů; nalezeno: ${chlumAssetCount}.`);
   if (nesmenAssetCount !== 6) fail(`Nesměň preload musí obsahovat 6 assetů; nalezeno: ${nesmenAssetCount}.`);
 }
 
@@ -111,7 +173,7 @@ const visibleVersion = html.match(/\bv(\d+)\.(\d+)\b/)?.slice(1).join(".");
 const cacheVersion = serviceWorker.match(/CACHE\s*=\s*["'][^"']*v(\d+)-(\d+)(?:-[^"']+)?["']/)?.slice(1, 3).join(".");
 if (!visibleVersion || !cacheVersion) fail("Nelze určit verzi UI nebo PWA cache.");
 else if (visibleVersion !== cacheVersion) fail(`Nesoulad UI a cache verze: ${visibleVersion} vs ${cacheVersion}.`);
-const expectedEvents = 33;
+const expectedEvents = 34;
 if (GAME_EVENT_NAMES.length !== expectedEvents) fail(`Eventový katalog musí mít ${expectedEvents} položek; nalezeno: ${GAME_EVENT_NAMES.length}.`);
 if (!runtimeSource.includes("fixedStep: options.fixedStep ?? 1 / 60")) fail("GameApp nemá rozpoznaný fixed timestep 60 Hz.");
 if (!runtimeSource.includes("maxFrameDelta: options.maxFrameDelta ?? 0.1")) fail("GameApp nemá limit frame delta 100 ms.");
@@ -119,10 +181,13 @@ if (!runtimeSource.includes("maxSubSteps: options.maxSubSteps ?? 5")) fail("Game
 console.log(`Kontrolováno HTML ID: ${htmlIds.length}`);
 console.log(`Kontrolováno runtime DOM referencí: ${referencedIds.size}`);
 console.log(`Kontrolováno runtime modulů: ${runtimeModules.size}`);
+console.log(`Kontrolováno zakázaných legacy souborů: ${forbiddenLegacyFiles.length}`);
+console.log(`Kontrolováno zdrojových modulů na persistenci: ${sourceFiles.length}`);
 console.log(`Kontrolováno PWA cest: ${cachedPaths.size}`);
 console.log(`Kontrolováno Chlum/common assetů: ${chlumAssetCount}`);
 console.log(`Kontrolováno Nesměň assetů: ${nesmenAssetCount}`);
 console.log(`Kontrolováno assetů celkem: ${Array.isArray(assetManifest) ? assetManifest.length : 0}`);
+console.log(`Nalezeno nepoužitých preload assetů: ${deadAssetIds.length}`);
 console.log(`Kontrolováno eventových kontraktů: ${GAME_EVENT_NAMES.length}`);
 console.log(`Rozpoznaná release verze: ${visibleVersion ?? "neuvedena"}`);
 for (const message of warnings) console.warn(`VAROVÁNÍ: ${message}`);

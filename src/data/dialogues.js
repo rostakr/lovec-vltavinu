@@ -25,6 +25,15 @@ const definitions = [
     ],
     actionLabel: "ROZUMÍM",
     grantsFlag: "nesmenPermission"
+  },
+  {
+    id: "besednice-guide",
+    speaker: { entityId: "besednice-guide", name: "Milan", role: "quarry-guide" },
+    lines: [
+      "Ježková vrstva se neukáže hned. Nejdřív projdi tři stopy v odkryté hlíně.",
+      "Až všechny přečteš, poznáš správný profil. Vykopej ho přesně a hlídej si Karla — na dobrý nález čeká."
+    ],
+    actionLabel: "JDU PO STOPÁCH"
   }
 ];
 

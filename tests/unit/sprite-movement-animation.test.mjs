@@ -82,3 +82,39 @@ test("sprite UV binding maps frames and preserves base width while mirroring", (
   assert.equal(syncSpriteVisual(object, { frame: 5, columns: 4, rows: 4, flipX: false }), true);
   assert.equal(object.scale.x, 72);
 });
+
+test("directional walk uses the matching realistic sprite row and idles in the last direction", () => {
+  const animation = createAnimation({
+    clip: "walk",
+    frames: [0, 1, 2, 3],
+    fps: 6,
+    playing: false,
+    motionDriven: true,
+    direction: "down",
+    directionFrames: {
+      down: [0, 1, 2, 3],
+      left: [4, 5, 6, 7],
+      right: [8, 9, 10, 11],
+      up: [12, 13, 14, 15]
+    }
+  });
+  const sprite = { frame: 0, flipX: false };
+  const system = new AnimationSystem();
+
+  assert.equal(system.setMotion(animation, sprite, { x: 2, y: 0 }), true);
+  assert.equal(animation.direction, "right");
+  assert.deepEqual(animation.frames, [8, 9, 10, 11]);
+  system.updateAnimation(animation, 0.18);
+  assert.equal(sprite.flipX, false);
+  assert.equal(animation.frame, 9);
+
+  assert.equal(system.setMotion(animation, sprite, { x: 0, y: 3 }), true);
+  assert.equal(animation.direction, "up");
+  assert.deepEqual(animation.frames, [12, 13, 14, 15]);
+  assert.equal(animation.frame, 13);
+
+  assert.equal(system.setMotion(animation, sprite, { x: 0, y: 0 }), false);
+  assert.equal(animation.playing, false);
+  assert.equal(animation.frame, 12);
+  assert.equal(sprite.frame, 12);
+});

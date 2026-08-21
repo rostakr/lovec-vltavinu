@@ -11,8 +11,9 @@ import {
 } from "../../src/index.js";
 
 test("event catalog matches the architecture contract", () => {
-  assert.equal(GAME_EVENT_NAMES.length, 33);
+  assert.equal(GAME_EVENT_NAMES.length, 34);
   assert.ok(GAME_EVENT_NAMES.includes("finding:collected"));
+  assert.ok(GAME_EVENT_NAMES.includes("dig:clean"));
   assert.ok(GAME_EVENT_NAMES.includes("hud:model:changed"));
 });
 
@@ -41,11 +42,12 @@ test("strict EventBus rejects unknown events and invalid payload fields", () => 
   }));
 });
 
-test("dig event contracts require the literal three", () => {
+test("dig event contracts require the literal three and validate clean metadata", () => {
   const valid = [
     ["dig:start", { spot: "spot-1", requiredHits: 3 }],
     ["dig:hit", { spot: "spot-1", hit: 1, requiredHits: 3, quality: 0.8 }],
-    ["dig:complete", { spot: "spot-1", hits: 3 }]
+    ["dig:complete", { spot: "spot-1", hits: 3, misses: 0, clean: true }],
+    ["dig:clean", { spot: "spot-1" }]
   ];
   for (const [type, payload] of valid) {
     assert.doesNotThrow(() => validateEventPayload(type, payload));
@@ -65,6 +67,10 @@ test("dig event contracts require the literal three", () => {
       /Invalid payload field for dig:complete: hits/
     );
   }
+  assert.throws(
+    () => validateEventPayload("dig:complete", { spot: "spot-1", hits: 3, misses: 0, clean: "yes" }),
+    /Invalid payload field for dig:complete: clean/
+  );
 });
 
 test("bootstrap integration uses canonical GameSession and objective evaluator", () => {
@@ -80,7 +86,7 @@ test("bootstrap integration uses canonical GameSession and objective evaluator",
 
   assert.equal(session.state.findings[0].findingId, "finding-1");
   assert.equal(session.state.score, 120);
-  const objective = evaluateObjective("chlum", { permit: true, digHits: 3, findings: 1 });
+  const objective = evaluateObjective("chlum", { permit: true, searched: true, findings: 1 });
   assert.equal(objective.complete, true);
 });
 

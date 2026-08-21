@@ -1,139 +1,46 @@
-# Lovec vltavínů — vývojový roadmap 6.0
+# Lovec vltavínů — produktový plán po vydání 6.0
 
-## Produktový cíl
+## Aktuální produktový cíl
 
-Mobilní browser hra propagující akci **Na Zelené Vlně** v KD Slávie. Hráč projde jihočeské vltavínové lokality, respektuje pravidla jednotlivých míst, získává kvalitní a doložené nálezy a ve finále sestaví výstavní kolekci.
+Lovec vltavínů je statická browser hra pro desktop i mobil, připravená pro GitHub Pages. Hráč projde čtyřmi kanonickými kapitolami: Chlum, Nesměň, Besednice a Malše/KD Slavia. Získané nálezy se počítají pouze v aktuální session a finále je vyhodnotí bez inventářové obrazovky nebo persistentního save systému.
 
-## Výchozí stav
+Technický základ je jediný Three.js `WebGLRenderer` s ortografickou kamerou. 2D postavy a efekty jsou PNG/sprite sheets, rekvizity low-poly GLB a HUD zůstává v HTML/CSS nad canvasem. Podrobný závazný kontrakt obsahuje `docs/ARCHITECTURE_CONTRACT.md`.
 
-Veřejný build 5.1 je čistá 2D Canvas aplikace. Obsahuje pět lokalit, HTML/CSS HUD, dotykový joystick, jedno akční tlačítko, minihru kopání, určování vzorků, hlídky, bossy, hudbu, lokální pokračování a finální hodnocení.
+## Neměnné principy
 
-Současné technické riziko je vysoké: rendering, audio, data, vstupy, UI a gameplay jsou soustředěny převážně v jednom souboru `game.js`. Cílová architektura projektu je hybridní Three.js aplikace s 2D sprity a low-poly 3D objekty.
+1. `main` je jediná zveřejnitelná větev a musí zůstat hratelná.
+2. Hra má jeden renderer; nevzniká druhý canvasový nebo WebGL runtime.
+3. Ovládání tvoří pohyb a jedno kontextové akční tlačítko. Dialog začíná akcí v dosahu, kopání vyžaduje tři zásahy do rytmu.
+4. Nevzniká inventář, localStorage save, migrace save ani pokračování mezi relacemi.
+5. Service worker slouží výhradně jako cache statických distribučních souborů.
+6. Každý asset má manifestové ID, relativní URL, technický rozpočet, checksum a jasného vlastníka dispose.
 
-## Zásady řízení
+## Dokončené produktové milníky
 
-1. Hratelný build nesmí být nahrazen neověřeným kompletním přepisem.
-2. Každá změna probíhá v samostatné větvi a pull requestu.
-3. Blokující mobilní chyby mají přednost před novým obsahem.
-4. Každý pull request musí projít automatickou validací.
-5. Vizuální assety musí mít jasný výkonový rozpočet a technickou specifikaci.
-6. Release je dokončen až po testu veřejné GitHub Pages verze na cílovém iPhonu.
+- Modulární runtime: `GameApp`, fixed-step `GameLoop`, `SceneManager`, `AssetLoader`, `InputManager`, ECS-lite a samostatné UI adaptéry.
+- Kompletní hratelný průchod Chlum → Nesměň → Besednice → Malše/KD Slavia.
+- Mobilní ovládání v portrait i landscape, lifecycle reset vstupu, přístupný HUD a dialogy.
+- Jediný renderer, kontraktové validace assetů a distribučně omezená offline cache.
+- Historický, neměnný release baseline `v6.0.0`; jeho evidence je v `docs/PROJECT_CONTROL.md`.
 
-## Etapa 0 — ochrana buildu
+## Aktivní schválený balík: #154
 
-- GitHub Actions validace;
-- kontrola syntaxe JavaScriptu;
-- kontrola DOM ID;
-- kontrola manifestu, cache a assetů;
-- kontrola verzí;
-- vývojový a release checklist.
+Jediný post-release feature balík je popsán autoritativně v `docs/PROJECT_CONTROL.md`:
 
-Výstup: každá další změna má automatickou regresní bránu.
+- Nesměň zachovává velkou mýtinu a pískové hromady, obklopené výrazně vysokými stromy v měřítku hráče a NPC.
+- Besednice používá široký písčitý lom s jílovými vrstvami.
+- Malše/KD Slavia má velkou hratelnou plochu; vysoká stavba KD Slavia je na okraji mapy a odpovídá reálnému neorenesančnímu motivu v Českých Budějovicích.
 
-## Etapa 1 — stabilita mobilního runtime
+Rozsah #154 nesmí měnit gameplay pravidla, session kontrakt, renderer ani mobilní vstup. Nové environment textury musí být manifestované, cacheované a testované.
 
-- sjednotit pointer, touch a click události;
-- vytvořit centrální správu herních režimů a overlayů;
-- nulovat vstup při pauze, dialogu, minihře a změně orientace;
-- přidat diagnostický režim s viditelným výpisem chyb;
-- opravit návrat z pozadí a obnovení audia;
-- provést smoke test všech přechodů.
+## Distribuční brána pro další vydání
 
-Výstup: ovladatelná a dokončitelná verze 5.2.
+Před sloučením feature PR do `main` musí být zelené:
 
-## Etapa 2 — oddělení systémů
+- `pnpm exec node tools/validate.mjs` bez chyb a varování;
+- kompletní `pnpm test:unit`;
+- Playwright desktop, iPhone portrait a iPhone landscape smoke;
+- vizuální kontrola nových lokalit včetně poměru vysokých stromů a KD Slavia vůči hráči;
+- kontrola manifestu, byte budgetů a service-worker cache.
 
-Navržená struktura:
-
-```text
-src/
-  app/
-    GameApp.js
-    GameState.js
-    GameLoop.js
-  core/
-    EventBus.js
-    SceneManager.js
-    AssetLoader.js
-  input/
-    InputManager.js
-    TouchControls.js
-    KeyboardControls.js
-  gameplay/
-    InteractionSystem.js
-    CollisionSystem.js
-    DangerSystem.js
-    DigSystem.js
-    BossSystem.js
-    ProgressionSystem.js
-  rendering/
-    Renderer2DAdapter.js
-    ThreeRenderer.js
-    CameraController.js
-    AnimationSystem.js
-  ui/
-    HudController.js
-    ScreenController.js
-  audio/
-    AudioEngine.js
-  data/
-    levels.js
-    items.js
-    perks.js
-```
-
-Nejprve se oddělí data a vstup. Rendering bude migrován až poté.
-
-## Etapa 3 — hybridní Three.js renderer
-
-- ortografická kamera;
-- 2D postavy jako transparentní sprity nebo sprite sheets;
-- low-poly GLB objekty pro stroje, stromy, lávku a KD Slávii;
-- světla a stíny pouze tam, kde mají jasný vizuální přínos;
-- HTML/CSS HUD zůstává nad canvasem;
-- kolize a gameplay zůstávají nezávislé na renderingu.
-
-Výstup: jeden plně převedený referenční level, následně migrace ostatních lokalit.
-
-## Etapa 4 — obsah a art pass
-
-- Chlum: pole, traktor, zemědělec a brázdy;
-- Ločenice: písčitá hrana, sklo versus vltavín;
-- Nesměň: lesní profily a povinnost zahrabání;
-- Besednice: těžební prostor, ježek a Krystalový Karel;
-- Malše / Slávie: nábřeží, dokumentace, finální certifikace a výstava;
-- každý NPC má vlastní siluetu, oděv a funkci;
-- bossové jsou čitelní bez spoléhání pouze na textové jméno.
-
-## Etapa 5 — výkon, audio a polish
-
-- adaptivní DPR;
-- omezení částic a animací podle výkonu;
-- komprimované audio formáty s bezpečným fallbackem;
-- jasně odlišná hudební nálada lokalit;
-- safe-area, portrait a landscape layout;
-- přístupnost ovládacích prvků a snížené animace.
-
-## Etapa 6 — release
-
-Release kandidát musí splnit:
-
-- automatická validace je zelená;
-- všech pět levelů lze dokončit v jednom průchodu;
-- nový start i pokračování fungují;
-- žádný overlay nezablokuje ovládání;
-- hra funguje po návratu z pozadí;
-- offline cache se aktualizuje na novou verzi;
-- veřejná GitHub Pages verze je otestována na cílovém iPhonu;
-- changelog a číslo verze odpovídají skutečnému buildu.
-
-## Aktivní GitHub issues
-
-- #1 Stabilita mobilního ovládání a stavových přechodů
-- #2 Automatická validace buildu
-- #3 Modulární hybridní architektura Three.js
-- #4 Gameplay všech lokalit
-- #5 Vizuální styl a assety
-- #6 Audio a mobilní výkon
-- #7 QA a release
-- #8 Hlavní vývojový plán
+Sloučený feature PR je distribuční kandidát, nikoli automaticky nový GitHub Release. Nový tag nebo Release vyžaduje samostatné release issue, explicitní candidate SHA, vlastní QA gate a nové číslo verze. Historický tag `v6.0.0` se nikdy nepřepisuje.

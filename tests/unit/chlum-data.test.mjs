@@ -7,13 +7,16 @@ import { CHLUM_ENTITY_DEFINITIONS, CHLUM_FINDING_VARIANTS, createChlumFinding, g
 
 const ASSET_MANIFEST = JSON.parse(readFileSync(new URL("../../assets/manifests/assets.json", import.meta.url), "utf8"));
 
-test("Chlum entity data contains one canonical player, permission target, dig site and tractor", () => {
+test("Chlum entity data contains one canonical player, permission target, surface search site and tractor", () => {
   const ids = CHLUM_ENTITY_DEFINITIONS.map(entity => entity.id);
   assert.equal(new Set(ids).size, ids.length);
-  assert.deepEqual(ids, ["player", "farmer-vaclav", "chlum-dig-site", "tractor"]);
+  assert.deepEqual(ids, ["player", "farmer-vaclav", "chlum-search-site", "tractor"]);
   assert.equal(getChlumEntityDefinition("farmer-vaclav").components.npc.dialogueId, "chlum-permission");
   assert.equal(getChlumEntityDefinition("farmer-vaclav").components.interaction.action, CONTEXT_ACTION);
-  assert.equal(getChlumEntityDefinition("chlum-dig-site").components.interaction.enabled, false);
+  const search = getChlumEntityDefinition("chlum-search-site");
+  assert.equal(search.components.interaction, undefined);
+  assert.equal(search.components.searchSpot.searched, false);
+  assert.equal(search.components.searchSpot.detectionRange, 240);
   assert.equal(getChlumEntityDefinition("tractor").components.hazard.kind, "tractor");
 });
 

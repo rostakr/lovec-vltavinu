@@ -13,6 +13,28 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon-180.png">
   <link rel="stylesheet" href="./style.css">
+  <style id="slavia-final-ui-contract">
+    .primary-button,.secondary-button,.text-button{min-height:44px}
+    #resultScreen{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+    #againButton{min-height:48px}
+    @media(max-width:430px) and (orientation:portrait){
+      #resultScreen .result-card{padding:18px}
+      #resultScreen .score-ring{width:124px;height:124px;margin:12px auto;border-width:6px}
+      #resultScreen .result-stats{grid-template-columns:repeat(2,minmax(0,1fr));margin:11px 0}
+    }
+    @media(orientation:landscape) and (max-height:520px){
+      #resultScreen{place-items:stretch center;padding:calc(8px + var(--safe-t)) calc(12px + var(--safe-r)) calc(8px + var(--safe-b)) calc(12px + var(--safe-l))}
+      #resultScreen .result-card{align-self:center;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(118px,.7fr);grid-template-areas:"kicker score" "title score" "text score" "stats stats" "action action";gap:6px 14px;max-width:780px;padding:14px 18px;text-align:left}
+      #resultKicker{grid-area:kicker;margin:0}
+      #resultTitle{grid-area:title;margin:0;font-size:clamp(24px,5vw,38px)}
+      #resultScreen .score-ring{grid-area:score;width:104px;height:104px;margin:0 auto;border-width:5px}
+      #resultScreen .score-ring strong{font-size:31px}
+      #resultText{grid-area:text;margin:0;font-size:12px;line-height:1.3}
+      #resultStats{grid-area:stats;margin:4px 0}
+      #resultStats div{padding:7px}
+      #againButton{grid-area:action}
+    }
+  </style>
   <title>Lovec vltavínů: Zelená vlna</title>
 </head>
 <body>
@@ -23,7 +45,7 @@
     <div class="hud-topbar">
       <div class="mission-panel">
         <span id="missionNumber" class="mission-index">1</span>
-        <div class="mission-copy"><small id="placeLabel">CHLUM</small><strong id="objectiveLabel">Načítání úkolu</strong></div>
+        <div class="mission-copy"><small id="placeLabel">CHLUM</small><strong id="objectiveLabel">Načítání úkolu</strong><span id="objectiveProgress" class="objective-progress">POSTUP 0 %</span></div>
       </div>
       <div class="system-panel">
         <div class="bag-pill" aria-label="Počet kamenů"><span>◆</span><b id="bagValue">0</b></div>
@@ -34,6 +56,11 @@
     <div id="heatPill" class="danger-meter" aria-label="Pozornost hlídky">
       <div class="danger-copy"><span>POZORNOST</span><strong id="dangerMeterText">KLID</strong></div>
       <i><em id="heatFill"></em></i>
+    </div>
+    <div id="radarPanel" class="radar-panel hidden" aria-label="Radar vltavínů">
+      <span class="radar-label">RADAR</span>
+      <i class="radar-track"><em id="radarFill"></em></i>
+      <strong id="radarState" class="radar-state">VYPNUTO</strong>
     </div>
     <div id="bossHud" class="boss-hud hidden">
       <div><small>HROZBA</small><strong id="bossName">KRYSTALOVÝ KAREL</strong></div>
@@ -70,12 +97,10 @@
       <h1>Lovec<br>vltavínů</h1>
       <p class="subtitle">Z pole až na Zelenou vlnu</p>
       <button id="playButton" class="play-button" type="button"><span>VYRAZIT</span><small>jedním klepnutím</small></button>
-      <button id="continueButton" class="text-button hidden" type="button">Pokračovat v rozehrané výpravě</button>
       <div class="title-tools">
         <button id="howButton" class="text-button" type="button">Jak se hraje</button>
-        <button id="recordsButton" class="text-button" type="button">Rekordy</button>
       </div>
-      <p class="version">v6.0 · Modular Bootstrap</p>
+      <p class="version">v7.0 · Čtyři lokality</p>
     </div>
   </section>
 
@@ -95,7 +120,7 @@
       <h2 id="digTitle">Drž rytmus lopaty</h2>
       <p id="digInfo">Klepni, když je ukazatel v zeleném poli.</p>
       <div class="dig-meter"><div id="sweetZone"></div><div id="digMarker"></div></div>
-      <div id="digHits" class="dig-hits">◇ ◇ ◇</div>
+      <div id="digHits" class="dig-hits" role="status" aria-live="polite"><span id="digHitCount">ZÁSAHY 0/3</span><span id="digHitSymbols" aria-hidden="true">◇ ◇ ◇</span></div>
       <button id="digButton" class="primary-button" type="button">KOPNOUT</button>
     </div>
   </section>
@@ -139,37 +164,32 @@
     </div>
   </section>
 
-  <section id="resultScreen" class="screen">
+  <section id="resultScreen" class="screen" role="dialog" aria-modal="true" aria-labelledby="resultTitle" aria-describedby="resultText" aria-live="polite">
     <div class="result-card">
       <p id="resultKicker" class="eyebrow">VÝSLEDEK POROTY</p>
       <h2 id="resultTitle">Výstavní uznání</h2>
-      <div class="score-ring"><strong id="resultScore">0</strong><span>BODŮ</span></div>
+      <div class="score-ring" role="group" aria-label="Výsledné skóre"><strong id="resultScore">0</strong><span>BODŮ</span></div>
       <p id="resultText"></p>
-      <div id="resultStats" class="result-stats"></div>
+      <div id="resultStats" class="result-stats" role="list"></div>
       <button id="againButton" class="primary-button" type="button">NOVÁ VÝPRAVA</button>
-      <button id="resultRecordsButton" class="text-button" type="button">Zobrazit rekordy</button>
     </div>
   </section>
 
   <section id="pauseScreen" class="screen transparent">
-    <div class="small-card"><p class="eyebrow">PAUZA</p><h2>Výprava čeká</h2><button id="resumeButton" class="primary-button" type="button">POKRAČOVAT</button><button id="menuButton" class="secondary-button" type="button">ODEJÍT DO MENU</button></div>
+    <div class="small-card"><p id="pausePlace" class="eyebrow">PAUZA</p><h2>Výprava čeká</h2><p id="pauseObjective" class="pause-objective">Načítání úkolu</p><p id="pauseProgress" class="pause-progress">POSTUP 0 %</p><button id="resumeButton" class="primary-button" type="button">POKRAČOVAT</button><button id="menuButton" class="secondary-button" type="button">ODEJÍT DO MENU</button></div>
   </section>
 
-  <section id="howScreen" class="screen">
+  <section id="howScreen" class="screen" role="dialog" aria-modal="true" aria-labelledby="howTitle" aria-describedby="howIntro">
     <div class="how-card">
-      <p class="eyebrow">JEDEN PALEC, JEDNO TLAČÍTKO</p><h2>Jak se hraje</h2>
+      <p id="howIntro" class="eyebrow">JEDEN PALEC, JEDNO TLAČÍTKO</p><h2 id="howTitle">Jak se hraje</h2>
       <div class="how-grid">
-        <div><b>1</b><strong>Pohyb</strong><p>Táhni palcem vlevo. Na okraji joysticku běžíš automaticky.</p></div>
-        <div><b>2</b><strong>Jedna akce</strong><p>Tlačítko vpravo slouží k rozhlédnutí, kopání, sbírání, rozhovoru i zahrabání profilu.</p></div>
-        <div><b>3</b><strong>Risk</strong><p>Hluk a pohled hlídky plní červenou pozornost. Při dopadení ztratíš slabý kámen.</p></div>
-        <div><b>4</b><strong>Kombo</strong><p>Rychlé správné nálezy násobí skóre. Vzácný kus kombo prodlouží.</p></div>
+        <div><b>1</b><strong>Pohyb</strong><p>Táhni palcem vlevo a procházej lokality vlastním tempem.</p></div>
+        <div><b>2</b><strong>Jedna akce</strong><p>Přibliž se k cíli. Když tlačítko vpravo ukáže název akce, můžeš mluvit, hledat, kopat nebo zahrnout profil.</p></div>
+        <div><b>3</b><strong>Kopání</strong><p>V zeleném poli tref tři úspěšné zásahy do rytmu. Stav ukazují drahokamy i počet zásahů.</p></div>
+        <div><b>4</b><strong>Pozornost</strong><p>Sleduj červené varování a drž se mimo hrozbu. Bezpečný postup je důležitější než spěch.</p></div>
       </div>
       <button id="closeHowButton" class="primary-button" type="button">ROZUMÍM</button>
     </div>
-  </section>
-
-  <section id="recordsScreen" class="screen">
-    <div class="records-card"><p class="eyebrow">NEJLEPŠÍ VÝPRAVY</p><h2>Rekordy</h2><ol id="recordsList"></ol><button id="closeRecordsButton" class="primary-button" type="button">ZAVŘÍT</button></div>
   </section>
 
   <noscript><div class="noscript">Hra potřebuje zapnutý JavaScript.</div></noscript>

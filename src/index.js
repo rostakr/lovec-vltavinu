@@ -35,9 +35,3 @@ export { evaluateObjective, isObjectiveComplete } from "./gameplay/Objectives.js
 export { PERK_DEFINITIONS, getPerkDefinition } from "./data/perks.js";
 export { SAMPLE_DEFINITIONS, getSampleDefinition } from "./data/samples.js";
 export { validateGameData, assertValidGameData } from "./data/validateGameData.js";
-export {
-  LegacyDataAdapter,
-  createLegacyLevelTable,
-  createLegacyPerkTable,
-  createLegacySampleTable
-} from "./adapters/LegacyDataAdapter.js";

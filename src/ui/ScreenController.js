@@ -4,6 +4,7 @@ const clamp01 = value => Math.max(0, Math.min(1, Number(value) || 0));
 
 const bindOnce = (element, handler) => {
   element.disabled = false;
+  element.setAttribute("aria-disabled", "false");
   element.onclick = event => {
     event.preventDefault();
     handler?.(event);
@@ -92,8 +93,12 @@ export class ScreenController {
     if (sweetMin >= sweetMax) throw new RangeError("Dig sweet spot must satisfy sweetMin < sweetMax.");
 
     this.element("digInfo").textContent = String(options.info ?? "Klepni, když je ukazatel v zeleném poli.");
-    this.element("digHits").textContent = Array.from({ length: DIG_REQUIRED_HITS }, (_, index) => index < hits ? "◆" : "◇")
-      .join(" ");
+    const symbols = Array.from({ length: DIG_REQUIRED_HITS }, (_, index) => index < hits ? "◆" : "◇").join(" ");
+    const hitSummary = `ZÁSAHY ${hits}/${DIG_REQUIRED_HITS}`;
+    const hitsElement = this.element("digHits");
+    this.element("digHitCount").textContent = hitSummary;
+    this.element("digHitSymbols").textContent = symbols;
+    hitsElement.setAttribute("aria-label", `${hitSummary}; ${hits === DIG_REQUIRED_HITS ? "kopání dokončeno" : "drž rytmus pro další zásah"}`);
     this.element("digMarker").style.left = `calc(${marker * 100}% - 5px)`;
     const sweetZone = this.element("sweetZone");
     sweetZone.style.left = `${sweetMin * 100}%`;
@@ -101,16 +106,31 @@ export class ScreenController {
     const button = this.element("digButton");
     button.disabled = Boolean(options.disabled);
     button.setAttribute("aria-label", `${button.textContent}; zásahy ${hits} z ${DIG_REQUIRED_HITS}`);
+    button.setAttribute("aria-disabled", button.disabled ? "true" : "false");
   }
 
   showLevelResult({ kicker = "ÚROVEŇ DOKONČENA", title, text, score = 0, stats = [], buttonLabel = "POKRAČOVAT", onContinue }) {
+    const resultScreen = this.element("resultScreen");
+    resultScreen.setAttribute("role", "dialog");
+    resultScreen.setAttribute("aria-modal", "true");
+    resultScreen.setAttribute("aria-labelledby", "resultTitle");
+    resultScreen.setAttribute("aria-describedby", "resultText");
+    resultScreen.setAttribute("aria-live", "polite");
+    resultScreen.setAttribute("aria-busy", "true");
+
     this.element("resultKicker").textContent = kicker;
     this.element("resultTitle").textContent = String(title ?? "Výprava pokračuje");
     this.element("resultText").textContent = String(text ?? "");
-    this.element("resultScore").textContent = String(Math.max(0, Number(score) || 0));
+    const normalizedScore = Math.max(0, Number(score) || 0);
+    const scoreElement = this.element("resultScore");
+    scoreElement.textContent = String(normalizedScore);
+    scoreElement.setAttribute("aria-label", `${normalizedScore} bodů`);
+
     const container = this.element("resultStats");
+    container.setAttribute("role", "list");
     container.replaceChildren(...stats.map(stat => {
       const item = this.document.createElement("div");
+      item.setAttribute("role", "listitem");
       const label = this.document.createElement("span");
       const value = this.document.createElement("strong");
       label.textContent = String(stat.label ?? "");
@@ -118,14 +138,25 @@ export class ScreenController {
       item.append(label, value);
       return item;
     }));
+
     const button = this.element("againButton");
     button.textContent = buttonLabel;
     bindOnce(button, onContinue);
-    this.element("resultRecordsButton").classList.add("hidden");
+    resultScreen.setAttribute("aria-busy", "false");
     return this.show("resultScreen", { playing: false });
   }
 
-  showPause({ onResume, onMenu }) {
+  showPause({ onResume, onMenu, placeLabel = "", objective = "", progress = 0 }) {
+    const percentage = Math.round(clamp01(progress) * 100);
+    this.element("pausePlace").textContent = placeLabel ? `${String(placeLabel).toUpperCase()} · PAUZA` : "PAUZA";
+    this.element("pauseObjective").textContent = String(objective || "Výprava čeká na další krok.");
+    const progressElement = this.element("pauseProgress");
+    progressElement.textContent = `POSTUP ${percentage} %`;
+    progressElement.setAttribute("role", "progressbar");
+    progressElement.setAttribute("aria-valuemin", "0");
+    progressElement.setAttribute("aria-valuemax", "100");
+    progressElement.setAttribute("aria-valuenow", String(percentage));
+    progressElement.setAttribute("aria-valuetext", `${percentage} %`);
     bindOnce(this.element("resumeButton"), onResume);
     const menu = this.element("menuButton");
     menu.textContent = "ODEJÍT DO MENU";
@@ -142,6 +173,28 @@ export class ScreenController {
     button.textContent = "OBNOVIT";
     bindOnce(button, onRetry);
     return this.show("briefScreen", { playing: false });
+  }
+
+  showFinding({ text = "Nález", icon = "🔑", score = 0 }) {
+    const perfectionText = score > 0 ? "" : "";
+
+    this.element("dialogName").textContent = `${icon} NÁLEZ`;
+    this.element("dialogText").textContent = `${text}\n+${score} bodů${perfectionText}`;
+    this.element("dialogAvatar").textContent = icon;
+    const button = this.element("dialogButton");
+    button.textContent = "POKRAČOVAT";
+    bindOnce(button, () => {});
+    return this.show("dialogScreen", { playing: false });
+  }
+
+  showDanger(message = "⚠️ Nebezpečí!", onDismiss) {
+    this.element("dialogName").textContent = "⚠️ NEBEZPEČÍ";
+    this.element("dialogText").textContent = message;
+    this.element("dialogAvatar").textContent = "⚠";
+    const button = this.element("dialogButton");
+    button.textContent = "POCHOPENO";
+    bindOnce(button, onDismiss);
+    return this.show("dialogScreen", { playing: false });
   }
 
   play() {

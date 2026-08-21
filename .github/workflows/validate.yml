@@ -1,11 +1,15 @@
 name: Validate game
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
-      - "agent/**"
   pull_request:
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -25,19 +29,42 @@ jobs:
         with:
           node-version: 24
 
+      - name: Install WebP build tool
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq webp
+
       - name: Check JavaScript syntax
         run: |
-          node --check game.js
-          node --check runtime-stability.js
           node --check tools/validate.mjs
+          node --check tools/art/build-slavia-v7-art.mjs
+          node --check tools/art/build-slavia-v7-png.mjs
           find src -type f -name '*.js' -print0 | xargs -0 -n1 node --check
           find tests/unit -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --check tests/audio-lifecycle.spec.mjs
+          node --check tests/mobile-smoke.spec.mjs
+          node --check tests/radar-hud-smoke.spec.mjs
+          node --check tests/slavia-smoke.spec.mjs
+          node --check tests/v71-dig-smoke.spec.mjs
+          node --check playwright.config.mjs
 
       - name: Validate static build
         run: |
           mkdir -p test-results
           set -o pipefail
-          node tools/validate.mjs 2>&1 | tee test-results/static-validation.log
+          npm run validate 2>&1 | tee test-results/static-validation.log
+
+      - name: Validate module graph
+        run: npm run validate:modules
+
+      - name: Reproduce Slavia production art
+        run: |
+          node tools/art/build-slavia-v7-art.mjs
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Slavia art reproduction changed the committed tree or left intermediate files:"
+            git status --short
+            exit 1
+          fi
 
       - name: Test Nesměň data contract
         run: node --test --test-reporter=spec tests/unit/nesmen-data.test.mjs
@@ -53,7 +80,7 @@ jobs:
 
       - name: Upload static validation report
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: static-validation-report
           path: |
@@ -63,33 +90,50 @@ jobs:
           retention-days: 14
 
   browser-smoke:
-    name: Mobile browser smoke
+    name: Playwright — ${{ matrix.project }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - desktop-chromium
+          - audio-lifecycle-chromium
+          - iphone-portrait
+          - iphone-portrait-smoke
+          - iphone-landscape
 
     steps:
+      # Pull requests already exercise real touch input, portrait rendering and
+      # an 844×390 orientation transition in iphone-portrait-smoke. Keep the
+      # expensive full mobile journeys for main pushes and manual release gates.
       - name: Checkout
+        if: ${{ github.event_name != 'pull_request' || (matrix.project != 'iphone-portrait' && matrix.project != 'iphone-landscape') }}
         uses: actions/checkout@v5
 
       - name: Setup Node.js
+        if: ${{ github.event_name != 'pull_request' || (matrix.project != 'iphone-portrait' && matrix.project != 'iphone-landscape') }}
         uses: actions/setup-node@v6
         with:
           node-version: 24
 
       - name: Install test dependencies
+        if: ${{ github.event_name != 'pull_request' || (matrix.project != 'iphone-portrait' && matrix.project != 'iphone-landscape') }}
         run: npm install --no-audit --no-fund --no-package-lock
 
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install Chromium headless shell
+        if: ${{ github.event_name != 'pull_request' || (matrix.project != 'iphone-portrait' && matrix.project != 'iphone-landscape') }}
+        run: npx playwright install --with-deps --only-shell chromium
 
-      - name: Run mobile smoke tests
-        run: npm run test:smoke
+      - name: Run ${{ matrix.project }}
+        if: ${{ github.event_name != 'pull_request' || (matrix.project != 'iphone-portrait' && matrix.project != 'iphone-landscape') }}
+        run: npm run test:smoke -- --project="${{ matrix.project }}"
 
       - name: Upload Playwright report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v5
+        if: ${{ !cancelled() && (github.event_name != 'pull_request' || (matrix.project != 'iphone-portrait' && matrix.project != 'iphone-landscape')) }}
+        uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.project }}
           path: |
             playwright-report/
             test-results/

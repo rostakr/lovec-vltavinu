@@ -19,7 +19,7 @@ const strictEvents = () => new EventBus({
   validatePayload: validateEventPayload
 });
 
-test("Besednice level keeps the canonical targets, preload group and transition contract", () => {
+test("Besednice level keeps the canonical targets, guide, preload group and transition contract", () => {
   const level = getLevelDefinition("besednice");
   assert.ok(level);
   assert.equal(level.next, "slavia");
@@ -31,16 +31,21 @@ test("Besednice level keeps the canonical targets, preload group and transition 
     required: 1
   });
 
+  const guide = getLevelTarget("besednice", "besednice-guide");
   const traces = getLevelTarget("besednice", "besednice-trace");
   const hedgehog = getLevelTarget("besednice", "besednice-hedgehog");
   const karel = getLevelTarget("besednice", "crystal-karel");
+  assert.equal(guide.positions.length, 1);
   assert.equal(traces.positions.length, 3);
   assert.equal(hedgehog.positions.length, 1);
   assert.equal(karel.positions.length, 1);
+  assert.equal(isLevelTargetReachable("besednice", "besednice-guide", 1), true);
   assert.equal(isLevelTargetReachable("besednice", "besednice-trace", 3), true);
   assert.equal(isLevelTargetReachable("besednice", "besednice-hedgehog", 1), true);
   assert.equal(isLevelTargetReachable("besednice", "crystal-karel", 1), true);
 
+  assert.equal(level.objectives[0].id, "local-briefing");
+  assert.equal(level.objectives[0].target, "besednice-guide");
   const digObjective = level.objectives.find(entry => entry.id === "dig-hedgehog");
   assert.equal(digObjective.requiredHits, DIG_REQUIRED_HITS);
   assert.equal(DIG_REQUIRED_HITS, 3);
@@ -52,10 +57,11 @@ test("Besednice objective remains blocked by each missing mandatory phase", () =
   const objective = new ObjectiveSystem({ session, levelId: "besednice" });
 
   const cases = [
-    { clues: 2, hedgehog: true, bossStarted: true, bossDefeated: true },
-    { clues: 3, hedgehog: false, bossStarted: true, bossDefeated: true },
-    { clues: 3, hedgehog: true, bossStarted: false, bossDefeated: true },
-    { clues: 3, hedgehog: true, bossStarted: true, bossDefeated: false }
+    { briefingComplete: false, clues: 3, hedgehog: true, bossStarted: true, bossDefeated: true },
+    { briefingComplete: true, clues: 2, hedgehog: true, bossStarted: true, bossDefeated: true },
+    { briefingComplete: true, clues: 3, hedgehog: false, bossStarted: true, bossDefeated: true },
+    { briefingComplete: true, clues: 3, hedgehog: true, bossStarted: false, bossDefeated: true },
+    { briefingComplete: true, clues: 3, hedgehog: true, bossStarted: true, bossDefeated: false }
   ];
   for (const runtime of cases) {
     assert.equal(objective.update(runtime).complete, false, JSON.stringify(runtime));
@@ -79,8 +85,8 @@ test("Besednice completion preserves earlier session findings and emits one cano
 
   objective.recordFinding(createBesedniceFinding());
   assert.throws(() => objective.recordFinding(createBesedniceFinding()), /already recorded/);
-  const result = objective.update({ clues: 3, hedgehog: true, bossStarted: true, bossDefeated: true });
-  objective.update({ clues: 3, hedgehog: true, bossStarted: true, bossDefeated: true });
+  const result = objective.update({ briefingComplete: true, clues: 3, hedgehog: true, bossStarted: true, bossDefeated: true });
+  objective.update({ briefingComplete: true, clues: 3, hedgehog: true, bossStarted: true, bossDefeated: true });
 
   assert.equal(result.complete, true);
   assert.equal(session.state.findings.length, 3);

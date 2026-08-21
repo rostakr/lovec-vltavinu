@@ -8,7 +8,7 @@ import { createBesedniceFinding } from "../../src/data/besednice.js";
 
 const strictEvents = () => new EventBus({ contracts: EVENT_CONTRACTS, validatePayload: validateEventPayload });
 
-test("Besednice ObjectiveSystem completes only after clues, hedgehog, boss start and recovery", () => {
+test("Besednice ObjectiveSystem completes only after briefing, clues, hedgehog, boss start and recovery", () => {
   const events = strictEvents();
   const completed = [];
   const levels = [];
@@ -21,11 +21,12 @@ test("Besednice ObjectiveSystem completes only after clues, hedgehog, boss start
 
   assert.equal(objective.permissionFlag, null);
   assert.equal(objective.grantPermission(), false);
-  assert.equal(objective.update({ clues: 3, hedgehog: true, bossStarted: true, bossDefeated: false }).complete, false);
+  assert.equal(objective.update({ briefingComplete: false, clues: 3, hedgehog: true, bossStarted: true, bossDefeated: true }).complete, false);
+  assert.equal(objective.update({ briefingComplete: true, clues: 3, hedgehog: true, bossStarted: true, bossDefeated: false }).complete, false);
 
   objective.recordFinding(createBesedniceFinding());
-  const result = objective.update({ clues: 3, hedgehog: true, bossStarted: true, bossDefeated: true });
-  objective.update({ clues: 3, hedgehog: true, bossStarted: true, bossDefeated: true });
+  const result = objective.update({ briefingComplete: true, clues: 3, hedgehog: true, bossStarted: true, bossDefeated: true });
+  objective.update({ briefingComplete: true, clues: 3, hedgehog: true, bossStarted: true, bossDefeated: true });
 
   assert.equal(result.complete, true);
   assert.equal(session.state.score, 240);
@@ -38,9 +39,9 @@ test("Besednice ObjectiveSystem preserves existing Chlum and Nesměň permission
   const session = createGameSession();
   session.enterLevel("chlum");
   const chlum = new ObjectiveSystem({ session, levelId: "chlum" });
-  assert.equal(chlum.snapshot({ permit: true, digHits: 3 }).current.permit, false);
+  assert.equal(chlum.snapshot({ permit: true, searched: true }).current.permit, false);
   assert.equal(chlum.grantPermission(), true);
-  assert.equal(chlum.snapshot({ digHits: 3 }).current.permit, true);
+  assert.equal(chlum.snapshot({ searched: true }).current.permit, true);
 
   session.enterLevel("nesmen");
   const nesmen = new ObjectiveSystem({ session, levelId: "nesmen" });

@@ -6,6 +6,7 @@ import { AssetLoader } from "./AssetLoader.js";
 import { World } from "../ecs/World.js";
 import { CollisionSystem } from "../systems/CollisionSystem.js";
 import { AnimationSystem } from "../systems/AnimationSystem.js";
+import { SceneTransition } from "../ui/SceneTransition.js";
 
 export class GameApp {
   constructor(options = {}) {
@@ -17,6 +18,7 @@ export class GameApp {
     this.collisions = options.collisions ?? new CollisionSystem({ events: this.events });
     this.animations = options.animations ?? new AnimationSystem({ events: this.events });
     this.renderer = options.renderer ?? null;
+    this.transition = options.transition ?? null;
     this.disposed = false;
 
     this.loop = options.loop ?? new GameLoop({
@@ -53,6 +55,12 @@ export class GameApp {
   async changeScene(id, context = {}) {
     if (this.disposed) throw new Error("Cannot change scene on a disposed GameApp.");
     this.input.reset("scene-transition");
+    if (this.transition) {
+      await this.transition.fadeOut(300);
+      const result = await this.scenes.transitionTo(id, context);
+      await this.transition.fadeIn(300);
+      return result;
+    }
     return this.scenes.transitionTo(id, context);
   }
 
@@ -102,6 +110,7 @@ export class GameApp {
     this.world.clear();
     this.collisions.reset();
     this.renderer?.dispose?.();
+    this.transition?.dispose?.();
     this.events.emit("app:dispose", {});
     this.events.clear();
   }

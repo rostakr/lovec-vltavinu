@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="192" viewBox="0 0 128 192" role="img" aria-labelledby="title desc">
+  <title id="title">Rival Karel — production sprite source</title>
+  <desc id="desc">Original transparent source artwork for the Besednice rival NPC, prepared for later PNG raster export.</desc>
+  <g shape-rendering="crispEdges">
+    <path fill="#2d251f" d="M45 18h38v6h9v13h6v30h-6v13H83v8H45v-8h-9V67h-6V37h6V24h9z"/>
+    <path fill="#68462f" d="M45 24h38v7h9v29h-6v13h-9v8H51v-8h-9V60h-6V37h9z"/>
+    <path fill="#d6a16e" d="M47 42h34v6h7v25h-7v9H47v-9h-7V48h7z"/>
+    <path fill="#3d2a22" d="M47 37h34v6H47zM40 48h8v17h-8zM80 48h8v17h-8z"/>
+    <path fill="#201b18" d="M50 56h9v6h-9zM69 56h9v6h-9z"/>
+    <path fill="#7b392d" d="M58 72h12v5H58z"/>
+    <path fill="#3f4a38" d="M38 88h52v9h8v44h-8v15H38v-15h-8V97h8z"/>
+    <path fill="#59654b" d="M44 94h40v8h7v34h-7v12H44v-12h-7v-34h7z"/>
+    <path fill="#2e352b" d="M52 94h24v10H52zM47 111h34v8H47z"/>
+    <path fill="#6d4b30" d="M29 104h10v36H29zM89 104h10v36H89z"/>
+    <path fill="#2b2522" d="M42 148h18v31H36v-9h6zM68 148h18v22h6v9H68z"/>
+    <path fill="#171514" d="M34 174h28v9H34zM66 174h28v9H66z"/>
+    <path fill="#8b6a3f" d="M91 92h5v49h-5z"/>
+    <path fill="#b79252" d="M88 88h11v8H88z"/>
+  </g>
+</svg>

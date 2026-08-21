@@ -67,6 +67,15 @@ export function validateGameData({ levels, perks, samples } = {}) {
           !finiteNumber(level?.bounds?.height) || level.bounds.height <= 0) {
         errors.push(`${prefix} has invalid bounds.`);
       }
+      const walkable = level?.walkable ?? level?.bounds;
+      if (!finiteNumber(walkable?.x) || !finiteNumber(walkable?.y) ||
+          !finiteNumber(walkable?.width) || walkable.width <= 0 ||
+          !finiteNumber(walkable?.height) || walkable.height <= 0 ||
+          !positionInsideBounds({ x: walkable.x, y: walkable.y }, level.bounds) ||
+          !positionInsideBounds({ x: walkable.x + walkable.width, y: walkable.y + walkable.height }, level.bounds)) {
+        errors.push(`${prefix} has invalid walkable bounds.`);
+      }
+      if (!positionInsideBounds(level?.spawn, walkable)) errors.push(`${prefix} spawn is outside walkable bounds.`);
       if (!nonEmptyString(level?.objective?.id) || !nonEmptyString(level?.objective?.type) ||
           !Number.isInteger(level?.objective?.required) || level.objective.required < 1) {
         errors.push(`${prefix} has an invalid objective summary.`);
@@ -86,7 +95,7 @@ export function validateGameData({ levels, perks, samples } = {}) {
           errors.push(`${prefix} target ${entry?.id ?? "(missing id)"} must use the context action.`);
         }
         if (!Array.isArray(entry?.positions) || entry.positions.length === 0 ||
-            entry.positions.some(position => !positionInsideBounds(position, level.bounds))) {
+            entry.positions.some(position => !positionInsideBounds(position, walkable))) {
           errors.push(`${prefix} target ${entry?.id ?? "(missing id)"} has an unreachable position.`);
         }
       }
@@ -113,7 +122,7 @@ export function validateGameData({ levels, perks, samples } = {}) {
             errors.push(`${prefix} objective ${objective?.id ?? "(missing id)"} references a missing target.`);
           } else if (target.reachable !== true || target.interaction?.enabled !== true ||
                      !Array.isArray(target.positions) || target.positions.length < objective.required ||
-                     target.positions.some(position => !positionInsideBounds(position, level.bounds))) {
+                     target.positions.some(position => !positionInsideBounds(position, walkable))) {
             errors.push(`${prefix} objective ${objective?.id ?? "(missing id)"} target is not reachable.`);
           }
           if (objective?.type === "dig" && objective.requiredHits !== 3) {

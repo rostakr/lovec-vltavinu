@@ -1,0 +1,270 @@
+/* V7 visual rebuild — reference-driven gameplay HUD overrides. */
+:root{
+  --v7-panel:rgba(15,18,13,.91);
+  --v7-panel-strong:rgba(10,12,9,.96);
+  --v7-line:rgba(236,241,226,.15);
+  --v7-green:#7fe39d;
+  --v7-green-soft:#b7e9c4;
+  --v7-text:#f4f1e7;
+  --v7-muted:#aeb5a8;
+}
+
+/* HUD belongs to the whole V7 journey, not only the Chlum scene root class. */
+.hud{
+  padding:calc(12px + var(--safe-t)) calc(12px + var(--safe-r)) calc(12px + var(--safe-b)) calc(12px + var(--safe-l));
+}
+.hud-topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+.mission-panel{
+  display:flex;
+  align-items:stretch;
+  width:min(430px,68vw);
+  max-width:none;
+  height:54px;
+  overflow:hidden;
+  border-radius:4px;
+  border:1px solid var(--v7-line);
+  border-left:0;
+  background:linear-gradient(180deg,rgba(32,35,27,.95),var(--v7-panel));
+  box-shadow:0 8px 24px rgba(0,0,0,.33);
+  backdrop-filter:blur(8px);
+}
+.mission-index{
+  display:grid;
+  place-items:center;
+  width:48px;
+  flex:0 0 48px;
+  border-radius:0;
+  border-right:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.035);
+  color:#eeeade;
+  font-size:24px;
+  font-weight:900;
+}
+.mission-copy{
+  min-width:0;
+  padding:7px 12px 6px;
+}
+.mission-copy small{
+  display:block;
+  color:#9edcae;
+  font-size:9px;
+  letter-spacing:.15em;
+}
+.mission-copy strong{
+  display:block;
+  margin-top:1px;
+  overflow:hidden;
+  color:var(--v7-text);
+  font-size:14px;
+  font-weight:800;
+  line-height:1.05;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.objective-progress{
+  display:block;
+  margin-top:2px;
+  color:#8da393;
+  font-size:7px;
+}
+
+.system-panel{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  pointer-events:auto;
+}
+.system-panel .bag-pill{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  min-width:48px;
+  height:44px;
+  padding:0 9px;
+  border:1px solid var(--v7-line);
+  border-radius:4px;
+  background:var(--v7-panel-strong);
+  color:var(--v7-text);
+  box-shadow:0 7px 20px rgba(0,0,0,.28);
+  backdrop-filter:blur(8px);
+}
+.system-panel .bag-pill span{color:var(--v7-green)}
+.system-panel .icon-button{
+  width:44px;
+  min-width:44px;
+  height:44px;
+  padding:0;
+  border-radius:4px;
+  border:1px solid var(--v7-line);
+  background:var(--v7-panel-strong);
+  color:#f0eee6;
+  box-shadow:0 7px 20px rgba(0,0,0,.28);
+  backdrop-filter:blur(8px);
+}
+
+/* Compact calm/danger strip directly under the mission card. */
+.danger-meter{
+  position:absolute;
+  top:calc(70px + var(--safe-t));
+  left:calc(12px + var(--safe-l));
+  right:auto;
+  display:grid;
+  align-items:center;
+  width:min(430px,68vw);
+  height:22px;
+  grid-template-columns:48px minmax(0,1fr);
+  gap:8px;
+  padding:4px 10px 4px 0;
+  border-radius:3px;
+  border:1px solid rgba(236,241,226,.11);
+  background:rgba(13,15,11,.91);
+  box-shadow:0 7px 18px rgba(0,0,0,.25);
+}
+.danger-copy{
+  display:grid;
+  place-items:center;
+  min-width:0;
+  height:100%;
+  border-right:1px solid rgba(255,255,255,.07);
+}
+.danger-copy span{display:none}
+.danger-copy strong{
+  color:#a9c5ae;
+  font-size:8px;
+  letter-spacing:.13em;
+}
+.danger-meter i{
+  display:block;
+  height:5px;
+  overflow:hidden;
+  border-radius:1px;
+  background:rgba(255,255,255,.08);
+}
+.danger-meter em{
+  display:block;
+  width:0;
+  height:100%;
+  background:linear-gradient(90deg,#7edb91,#75d88c 62%,#d9b66c 82%,#d9685d 100%);
+}
+.danger-meter.warning .danger-copy strong{color:#e1bd72}
+.danger-meter.detected .danger-copy strong{color:#ffaaa1}
+
+/* The Chlum radar is a real HUD instrument: each scan maps the scene signal to this meter. */
+.radar-panel{
+  position:absolute;
+  top:calc(100px + var(--safe-t));
+  left:calc(12px + var(--safe-l));
+  display:grid;
+  grid-template-columns:auto minmax(74px,1fr) auto;
+  align-items:center;
+  gap:8px;
+  width:min(286px,68vw);
+  min-height:38px;
+  padding:7px 9px;
+  border:1px solid rgba(127,227,157,.28);
+  border-radius:5px;
+  background:rgba(9,18,12,.93);
+  box-shadow:0 8px 22px rgba(0,0,0,.28);
+  backdrop-filter:blur(8px);
+}
+.radar-panel.hidden{display:none!important}
+.radar-label{
+  color:var(--v7-green-soft);
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.13em;
+}
+.radar-track{
+  height:7px;
+  overflow:hidden;
+  border-radius:2px;
+  background:rgba(255,255,255,.09);
+}
+.radar-track em{
+  display:block;
+  width:0;
+  height:100%;
+  background:linear-gradient(90deg,#4d8e62,#7fe39d 58%,#d8d66f 82%,#fff4a5 100%);
+  transition:width .16s ease-out;
+}
+.radar-state{
+  min-width:48px;
+  color:var(--v7-text);
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-align:right;
+}
+.radar-panel[data-signal="target"]{
+  border-color:rgba(255,244,165,.58);
+  box-shadow:0 0 0 3px rgba(255,244,165,.08),0 8px 22px rgba(0,0,0,.28);
+}
+
+.hint{
+  bottom:calc(116px + var(--safe-b));
+  padding:7px 11px;
+  border-radius:5px;
+  border-color:rgba(255,255,255,.12);
+  background:rgba(13,15,11,.88);
+  color:#ecebe3;
+  font-size:11px;
+  box-shadow:0 7px 18px rgba(0,0,0,.25);
+}
+
+/* Mobile controls are deliberately translucent so the authored terrain stays visible. */
+.move-zone{
+  width:122px;
+  height:122px;
+  border:1px solid rgba(240,245,235,.22);
+  background:rgba(16,20,15,.20);
+  box-shadow:inset 0 0 0 18px rgba(255,255,255,.018),0 8px 28px rgba(0,0,0,.18);
+  backdrop-filter:blur(2px);
+}
+.stick{
+  width:58px;
+  height:58px;
+  background:rgba(115,218,145,.48);
+  border:2px solid rgba(210,245,220,.68);
+}
+.action-button{
+  width:92px;
+  height:92px;
+  border:2px solid rgba(212,244,220,.68);
+  background:radial-gradient(circle at 38% 32%,rgba(127,227,157,.96),rgba(44,128,72,.94));
+  box-shadow:0 9px 28px rgba(0,0,0,.3);
+}
+.action-button.ready{
+  box-shadow:0 0 0 6px rgba(127,227,157,.10),0 9px 28px rgba(0,0,0,.3);
+}
+
+@media(max-width:520px){
+  .mission-panel,.danger-meter{width:min(62vw,330px)}
+  .mission-panel{height:50px}
+  .mission-index{width:42px;flex-basis:42px;font-size:20px}
+  .mission-copy{padding:6px 9px}
+  .mission-copy strong{font-size:11px}
+  .mission-copy small{font-size:8px}
+  .objective-progress{font-size:6px}
+  .danger-meter{top:calc(64px + var(--safe-t));grid-template-columns:42px minmax(0,1fr)}
+  .radar-panel{top:calc(92px + var(--safe-t));width:min(62vw,330px)}
+}
+
+@media(orientation:landscape) and (max-height:520px){
+  .hud{padding-top:calc(7px + var(--safe-t))}
+  .mission-panel{width:min(390px,48vw);height:44px}
+  .mission-index{width:38px;flex-basis:38px;font-size:18px}
+  .mission-copy{padding:5px 8px}
+  .mission-copy strong{font-size:10px}
+  .danger-meter{top:calc(54px + var(--safe-t));left:calc(12px + var(--safe-l));width:min(390px,48vw);height:20px;grid-template-columns:38px minmax(0,1fr)}
+  .radar-panel{top:calc(80px + var(--safe-t));left:calc(12px + var(--safe-l));width:min(300px,48vw);min-height:32px;padding:5px 7px}
+  .system-panel .bag-pill,.system-panel .icon-button{height:40px}
+  .system-panel .icon-button{width:40px;min-width:40px}
+  .move-zone{width:106px;height:106px}
+  .action-button{width:80px;height:80px}
+}

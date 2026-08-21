@@ -35,22 +35,23 @@ const definitions = [
     theme: "field",
     music: "field",
     text: "Déšť omyl tmavou ornici. Nejdříve je nutné získat souhlas hospodáře a teprve potom hledat mimo dráhu traktoru.",
-    goal: "Získej povolení, zvládni tři rytmické zásahy a najdi první vltavín.",
+    goal: "Získej povolení, prohledej povrch pole a najdi první vltavín.",
     briefing: {
       context: "Majitel pole Václav je přímo na místě a traktor už znovu vyráží do brázd.",
-      goal: "Promluv s Václavem, vykopej označené místo a odnes nález."
+      goal: "Promluv s Václavem, prohledej označené místo a odnes povrchový nález."
     },
     spawn: { x: 120, y: 380 },
     bounds: { x: 0, y: 0, width: 1600, height: 1200 },
+    walkable: { x: 40, y: 40, width: 1520, height: 1120 },
     objective: { id: "chlum-permission-and-find", type: "chlum-permission-and-find", required: 1 },
     objectives: [
       objective("permission", "dialog", "farmer-vaclav", 1),
-      objective("dig-finding", "dig", "chlum-dig-site", 1, { requiredHits: DIG_REQUIRED_HITS }),
-      objective("record-finding", "collect", "chlum-dig-site", 1)
+      objective("search-surface", "discover", "chlum-search-site", 1),
+      objective("record-finding", "collect", "chlum-search-site", 1)
     ],
     targets: [
       target("farmer-vaclav", "npc", [{ x: 560, y: 410 }]),
-      target("chlum-dig-site", "dig-site", [{ x: 1020, y: 720 }])
+      target("chlum-search-site", "surface-search", [{ x: 1020, y: 720 }])
     ],
     hazards: ["tractor"],
     assetGroups: ["common", "level:chlum"],
@@ -72,6 +73,7 @@ const definitions = [
     },
     spawn: { x: 180, y: 980 },
     bounds: { x: 0, y: 0, width: 1500, height: 1200 },
+    walkable: { x: 120, y: 140, width: 1260, height: 940 },
     objective: { id: "nesmen-dig-and-restore", type: "nesmen-dig-and-restore", required: 3 },
     objectives: [
       objective("permission", "dialog", "forester", 1),
@@ -99,20 +101,23 @@ const definitions = [
     theme: "quarry",
     music: "quarry",
     text: "Tři stopy vedou k ježkové vrstvě. Konkurenční hledač čeká, až nález vytáhne někdo jiný.",
-    goal: "Najdi 3 stopy, vykopej ježek a získej jej zpět od Karla.",
+    goal: "Promluv s místním znalcem, najdi 3 stopy, vykopej ježek a získej jej zpět od Karla.",
     briefing: {
-      context: "Na starém nalezišti jsou tři čitelné stopy a rival Karel sleduje každý kvalitní nález.",
-      goal: "Prozkoumej všechny stopy, zvládni kopání a nenech Karla s nálezem utéct."
+      context: "Na starém nalezišti čeká místní znalec. Nejdřív vysvětlí, jak číst tři stopy vedoucí k ježkové vrstvě; rival Karel mezitím sleduje každý kvalitní nález.",
+      goal: "Promluv se znalcem, prozkoumej všechny stopy, zvládni kopání a nenech Karla s nálezem utéct."
     },
     spawn: { x: 140, y: 1040 },
     bounds: { x: 0, y: 0, width: 1680, height: 1280 },
+    walkable: { x: 100, y: 180, width: 1480, height: 980 },
     objective: { id: "besednice-hedgehog-recovery", type: "besednice-hedgehog-recovery", required: 1 },
     objectives: [
+      objective("local-briefing", "dialog", "besednice-guide", 1),
       objective("find-traces", "discover", "besednice-trace", 3),
       objective("dig-hedgehog", "dig", "besednice-hedgehog", 1, { requiredHits: DIG_REQUIRED_HITS }),
       objective("recover-hedgehog", "boss", "crystal-karel", 1)
     ],
     targets: [
+      target("besednice-guide", "npc", [{ x: 260, y: 980 }]),
       target("besednice-trace", "clue", [
         { x: 470, y: 890 },
         { x: 880, y: 620 },
@@ -139,8 +144,9 @@ const definitions = [
       context: "Expertka čeká na dokumentaci nálezů, zatímco Franta se pokouší získat nejlepší kámen.",
       goal: "Seber tři složky, promluv se znalkyní, zastav Frantu a nech sbírku certifikovat."
     },
-    spawn: { x: 160, y: 860 },
+    spawn: { x: 380, y: 860 },
     bounds: { x: 0, y: 0, width: 1800, height: 1100 },
+    walkable: { x: 340, y: 120, width: 1360, height: 860 },
     objective: { id: "slavia-certification", type: "slavia-certification", required: 1 },
     objectives: [
       objective("collect-documents", "collect", "documentation-folder", 3),
@@ -189,7 +195,7 @@ export function isLevelTargetReachable(levelId, targetId, required = 1) {
   if (!level || !entry || entry.reachable !== true || entry.interaction?.enabled !== true) return false;
   if (entry.interaction.action !== CONTEXT_ACTION || entry.positions.length < required) return false;
 
-  const { x, y, width, height } = level.bounds;
+  const { x, y, width, height } = level.walkable ?? level.bounds;
   return entry.positions.every(position => (
     position.x >= x && position.x <= x + width &&
     position.y >= y && position.y <= y + height

@@ -1,8 +1,11 @@
 {
   "name": "lovec-vltavinu",
-  "version": "6.0.0",
+  "version": "7.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
     "validate": "node tools/validate.mjs",
     "validate:modules": "find src -type f -name '*.js' -print0 | xargs -0 -n1 node --check",

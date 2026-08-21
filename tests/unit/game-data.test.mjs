@@ -147,7 +147,7 @@ test("validation rejects duplicate ids, broken order and invalid targets", () =>
   brokenLevels[1].id = "chlum";
   brokenLevels[2].order = 8;
   brokenLevels[0].objectives[0].required = 0;
-  brokenLevels[0].objectives[1].requiredHits = 2;
+  brokenLevels[1].objectives.find(objective => objective.type === "dig").requiredHits = 2;
   brokenLevels[0].objectives[2].target = "missing-finding";
   brokenLevels.at(-1).final = false;
 

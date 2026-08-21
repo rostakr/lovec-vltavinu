@@ -1,0 +1,387 @@
+/* Environment Visual Design - Color palettes and styling for each location */
+
+:root {
+  /* Universal design */
+  --ui-primary: #8B7355;
+  --ui-secondary: #d4af37;
+  --ui-text: #e0d5c8;
+  --ui-bg-dark: #1a1410;
+
+  /* Shared interactive elements */
+  --danger-color: #FF6B6B;
+  --safe-color: #90EE90;
+  --warning-color: #FFD700;
+  --info-color: #87CEEB;
+}
+
+/* ======== CHLUM - Pole po dešti ======== */
+.level-chlum,
+[data-level="chlum"] {
+  /* Background and environment */
+  --env-sky: #87CEEB;
+  --env-sky-alt: #B0E0E6;
+  --env-grass: #2D5016;
+  --env-soil: #5C4033;
+  --env-soil-dark: #3E2B20;
+  --env-water: #4A90E2;
+  --env-water-puddle: #6BA3E5;
+  --env-accent: #CC0000;
+
+  /* UI styling for this level */
+  --level-primary-color: #5C4033;
+  --level-secondary-color: #2D5016;
+
+  /* Theme colors */
+  background: linear-gradient(180deg, #87CEEB 0%, #2D5016 100%);
+  color: var(--ui-text);
+}
+
+.level-chlum .tile {
+  background: var(--env-soil);
+  border-color: var(--env-grass);
+}
+
+.level-chlum .tile.grass {
+  background: var(--env-grass);
+}
+
+.level-chlum .tile.water {
+  background: var(--env-water);
+  opacity: 0.6;
+}
+
+.level-chlum .hazard-indicator {
+  color: var(--env-accent);
+}
+
+.level-chlum .player {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+}
+
+/* Chlum specific effects */
+.chlum-puddle {
+  background: radial-gradient(ellipse, var(--env-water-puddle) 0%, var(--env-water) 100%);
+  opacity: 0.4;
+}
+
+.chlum-tractor {
+  background: var(--env-accent);
+  box-shadow: 0 0 10px rgba(204, 0, 0, 0.6);
+}
+
+.chlum-atmosphere {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* ======== NEŠMEN - Lesní profily ======== */
+.level-nesmen,
+[data-level="nesmen"] {
+  --env-tree-dark: #1B4D1B;
+  --env-tree-mid: #2D5016;
+  --env-soil-forest: #3E2B20;
+  --env-moss: #6B8E23;
+  --env-scientific: #8B7355;
+  --env-stone: #696969;
+
+  --level-primary-color: #3E2B20;
+  --level-secondary-color: #6B8E23;
+
+  background: linear-gradient(180deg, #556B2F 0%, #1B4D1B 100%);
+}
+
+.level-nesmen .tile {
+  background: var(--env-soil-forest);
+  border-color: var(--env-moss);
+}
+
+.level-nesmen .tile.forest {
+  background: var(--env-tree-dark);
+}
+
+.level-nesmen .tile.moss {
+  background: var(--env-moss);
+  opacity: 0.7;
+}
+
+.level-nesmen .dig-site {
+  border: 2px dashed var(--env-scientific);
+  background: rgba(139, 115, 85, 0.1);
+}
+
+.nesmen-profile-marker {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-left: 3px solid var(--env-scientific);
+  background: linear-gradient(90deg, rgba(139, 115, 85, 0.3) 0%, transparent 100%);
+}
+
+.nesmen-scientist-mark {
+  color: var(--env-scientific);
+  font-weight: bold;
+  font-size: 10px;
+}
+
+.nesmen-forest-dense {
+  opacity: 0.5;
+  filter: brightness(0.8);
+}
+
+/* ======== BEŠEDNICE - Lom ======== */
+.level-besednice,
+[data-level="besednice"] {
+  --env-clay: #C19A6B;
+  --env-clay-dark: #8B6914;
+  --env-terracotta: #E2B48F;
+  --env-stone-quarry: #696969;
+  --env-stone-light: #A9A9A9;
+  --env-vegetation: #4CAF50;
+  --env-rust: #A0522D;
+
+  --level-primary-color: #C19A6B;
+  --level-secondary-color: #4CAF50;
+
+  background: linear-gradient(180deg, #D4A574 0%, #8B6914 100%);
+}
+
+.level-besednice .tile {
+  background: var(--env-clay);
+  border-color: var(--env-clay-dark);
+}
+
+.level-besednice .tile.stone {
+  background: var(--env-stone-quarry);
+  border-color: var(--env-stone-light);
+}
+
+.level-besednice .tile.vegetation {
+  background: var(--env-vegetation);
+  opacity: 0.7;
+}
+
+.besednice-quarry-wall {
+  background: linear-gradient(90deg, var(--env-stone-light) 0%, var(--env-stone-quarry) 100%);
+  border-left: 4px solid var(--env-rust);
+}
+
+.besednice-dry-zone {
+  background: var(--env-terracotta);
+  filter: brightness(1.1) saturate(0.8);
+  opacity: 0.8;
+}
+
+.besednice-machinery {
+  color: var(--env-rust);
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.besednice-hedgehog {
+  color: #8B4513;
+  filter: drop-shadow(0 0 3px rgba(139, 69, 19, 0.5));
+}
+
+/* ======== SLAVIA - Hrad ======== */
+.level-slavia,
+[data-level="slavia"] {
+  --env-stone-castle: #808080;
+  --env-stone-light: #A9A9A9;
+  --env-brick: #A0522D;
+  --env-moss-castle: #6B8E23;
+  --env-gold: #D4AF37;
+  --env-mystery: #4B0082;
+
+  --level-primary-color: #808080;
+  --level-secondary-color: #D4AF37;
+
+  background: linear-gradient(180deg, #696969 0%, #404040 100%);
+  filter: saturate(0.9) contrast(1.05);
+}
+
+.level-slavia .tile {
+  background: var(--env-stone-castle);
+  border-color: var(--env-stone-light);
+}
+
+.level-slavia .tile.ruin {
+  background: linear-gradient(135deg, var(--env-stone-light) 0%, var(--env-stone-castle) 100%);
+}
+
+.level-slavia .tile.historic {
+  background: var(--env-brick);
+  border-color: var(--env-moss-castle);
+}
+
+.slavia-castle-ruin {
+  position: relative;
+  background: linear-gradient(135deg, var(--env-stone-light) 0%, var(--env-stone-castle) 100%);
+  border: 2px solid var(--env-moss-castle);
+  opacity: 0.85;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.7));
+}
+
+.slavia-castle-damaged-edge {
+  border-top: 3px jagged var(--env-stone-light);
+  opacity: 0.7;
+}
+
+.slavia-document {
+  background: #F5E6D3;
+  color: #8B6F47;
+  border: 1px solid var(--env-gold);
+  filter: drop-shadow(0 2px 4px rgba(212, 175, 55, 0.5));
+  box-shadow: inset 0 0 2px rgba(212, 175, 55, 0.3);
+}
+
+.slavia-guard {
+  color: var(--env-mystery);
+  font-weight: bold;
+  filter: drop-shadow(0 0 4px rgba(75, 0, 130, 0.6));
+}
+
+.slavia-atmosphere-fog {
+  background: radial-gradient(ellipse, transparent 0%, rgba(0, 0, 0, 0.3) 100%);
+  pointer-events: none;
+}
+
+/* ======== Accessibility - Colorblind Modes ======== */
+
+/* Deuteranopia (Red-Green) */
+[data-colorblind="deuteranopia"] {
+  --env-danger: #0072B2;
+  --env-safe: #E69F00;
+  --env-warning: #56B4E9;
+}
+
+[data-colorblind="deuteranopia"] .level-chlum {
+  --env-grass: #4A8FBC;
+  --env-soil: #6B5B4A;
+  --env-accent: #0072B2;
+}
+
+[data-colorblind="deuteranopia"] .level-nesmen {
+  --env-tree-dark: #2B4F6E;
+  --env-moss: #8B8B8B;
+}
+
+[data-colorblind="deuteranopia"] .level-besednice {
+  --env-clay: #8B8B8B;
+  --env-vegetation: #E69F00;
+}
+
+[data-colorblind="deuteranopia"] .level-slavia {
+  --env-brick: #CC7700;
+  --env-gold: #56B4E9;
+}
+
+/* Protanopia (Red-Green alt) */
+[data-colorblind="protanopia"] {
+  --env-danger: #005F87;
+  --env-safe: #EDB820;
+  --env-warning: #0072B2;
+}
+
+[data-colorblind="protanopia"] .level-chlum {
+  --env-grass: #5B7D99;
+  --env-accent: #005F87;
+}
+
+[data-colorblind="protanopia"] .level-nesmen {
+  --env-tree-dark: #334F7D;
+  --env-moss: #A0A0A0;
+}
+
+[data-colorblind="protanopia"] .level-besednice {
+  --env-vegetation: #EDB820;
+}
+
+/* Tritanopia (Blue-Yellow) */
+[data-colorblind="tritanopia"] {
+  --env-danger: #FF0000;
+  --env-safe: #0000FF;
+  --env-warning: #FFFF00;
+}
+
+[data-colorblind="tritanopia"] .level-chlum {
+  --env-grass: #003366;
+  --env-water: #0066FF;
+  --env-accent: #FF0000;
+}
+
+[data-colorblind="tritanopia"] .level-nesmen {
+  --env-tree-dark: #003333;
+  --env-moss: #0099FF;
+}
+
+[data-colorblind="tritanopia"] .level-besednice {
+  --env-vegetation: #0099FF;
+}
+
+/* ======== High Contrast Mode ======== */
+.high-contrast {
+  --ui-text: #FFFFFF;
+  --ui-bg-dark: #000000;
+  filter: contrast(1.3) brightness(1.1);
+}
+
+.high-contrast .level-chlum {
+  background: linear-gradient(180deg, #00FFFF 0%, #000066 100%);
+  --env-grass: #00FF00;
+  --env-soil: #FFFF00;
+  --env-accent: #FF0000;
+}
+
+.high-contrast .level-nesmen {
+  background: linear-gradient(180deg, #00FF00 0%, #000066 100%);
+  --env-tree-dark: #FFFF00;
+  --env-moss: #00FFFF;
+}
+
+.high-contrast .level-besednice {
+  background: linear-gradient(180deg, #FFFF00 0%, #FF0000 100%);
+  --env-clay: #00FFFF;
+  --env-vegetation: #00FF00;
+}
+
+.high-contrast .level-slavia {
+  background: linear-gradient(180deg, #FFFFFF 0%, #000000 100%);
+  --env-stone-castle: #FFFFFF;
+  --env-brick: #FF00FF;
+  --env-gold: #FFFF00;
+}
+
+/* ======== Large Text Mode ======== */
+.large-text {
+  font-size: 1.25em;
+  line-height: 1.6;
+}
+
+.large-text .hud-element {
+  font-size: 1.25em;
+}
+
+.large-text button {
+  padding: 14px 20px;
+  font-size: 16px;
+}
+
+/* ======== Animations & Transitions ======== */
+@keyframes digEffect {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+.dig-animation {
+  animation: digEffect 0.6s ease-out;
+}
+
+@keyframes dangerPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7); }
+  50% { box-shadow: 0 0 0 10px rgba(255, 107, 107, 0); }
+}
+
+.danger-active {
+  animation: dangerPulse 1s infinite;
+}
+

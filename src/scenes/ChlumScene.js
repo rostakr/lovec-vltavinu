@@ -1,11 +1,13 @@
-import { DIG_REQUIRED_HITS, LEVEL_ORDER, getLevelDefinition } from "../data/levels.js";
-import { CHLUM_ENTITY_DEFINITIONS, createChlumFinding } from "../data/chlum.js";
+import { LEVEL_ORDER, getLevelDefinition } from "../data/levels.js";
+import { CHLUM_ENTITY_DEFINITIONS, CHLUM_FINDING_VARIANTS } from "../data/chlum.js";
 import { getDialogueDefinition } from "../data/dialogues.js";
 import { InteractionSystem } from "../gameplay/InteractionSystem.js";
-import { DigSystem } from "../gameplay/DigSystem.js";
 import { DangerSystem } from "../gameplay/DangerSystem.js";
 import { ObjectiveSystem } from "../gameplay/ObjectiveSystem.js";
+import { createRng } from "../gameplay/SessionRng.js";
+import { resolveVariant, createFinding } from "../gameplay/FindingResolver.js";
 import { ModelFactory } from "../render/ModelFactory.js";
+import { setBoundedCameraCenter } from "../render/CameraBounds.js";
 
 const MANIFEST_ENTRY = Object.freeze({ id: "chlum-runtime-assets", type: "json", url: "./assets/manifests/assets.json" });
 const cloneData = value => JSON.parse(JSON.stringify(value));
@@ -30,19 +32,23 @@ export class ChlumScene {
     this.externalIdByEntity = new Map();
     this.playerEntity = null;
     this.farmerEntity = null;
-    this.digEntity = null;
+    this.searchEntity = null;
     this.tractorEntity = null;
     this.findingEntity = null;
     this.availableInteraction = null;
     this.collisions = [];
     this.modal = null;
-    this.digHits = 0;
+    this.surfaceSearched = false;
+    this.radarEnabled = false;
+    this.radarPulseCount = 0;
+    this.radarMessage = "";
+    this.rng = null;
     this.resultShown = false;
     this.levelComplete = null;
     this.hudRevision = 0;
     this.hudSignature = "";
+    this.npcIdleTime = 0;
     this.interactions = new InteractionSystem({ events: this.events });
-    this.dig = new DigSystem({ events: this.events });
     this.danger = new DangerSystem({ events: this.events, session: this.session });
     this.objectives = new ObjectiveSystem({ events: this.events, session: this.session, levelId: "chlum" });
   }
@@ -63,7 +69,6 @@ export class ChlumScene {
     this.app.world.clear();
     this.app.collisions.reset();
     this.interactions.clear();
-    this.dig.cancel();
     this.danger.reset();
     this.objectives.reset();
     this.assetEntries.clear();
@@ -74,13 +79,17 @@ export class ChlumScene {
     this.externalIdByEntity.clear();
     this.playerEntity = null;
     this.farmerEntity = null;
-    this.digEntity = null;
+    this.searchEntity = null;
     this.tractorEntity = null;
     this.findingEntity = null;
     this.availableInteraction = null;
     this.collisions = [];
     this.modal = null;
-    this.digHits = 0;
+    this.surfaceSearched = false;
+    this.radarEnabled = false;
+    this.radarPulseCount = 0;
+    this.radarMessage = "";
+    this.rng = createRng(this.session.state.seed ^ 0x43484C4D);
     this.resultShown = false;
     this.levelComplete = null;
     this.hudSignature = "";
@@ -145,7 +154,7 @@ export class ChlumScene {
     }
     this.playerEntity = this.entityByExternalId.get("player");
     this.farmerEntity = this.entityByExternalId.get("farmer-vaclav");
-    this.digEntity = this.entityByExternalId.get("chlum-dig-site");
+    this.searchEntity = this.entityByExternalId.get("chlum-search-site");
     this.tractorEntity = this.entityByExternalId.get("tractor");
   }
 
@@ -179,11 +188,11 @@ export class ChlumScene {
     this.renderer.add(root, "ground");
     playerTexture.repeat.set(0.25, 0.25);
     playerTexture.offset.set(0, 0.75);
-    const player = this.renderer.createSprite(playerTexture, { width: 72, height: 82, z: 12, anchorX: 0.5, anchorY: 0.16, assetId: "player-hunter-walk" });
-    const farmer = this.renderer.createSprite(farmerTexture, { width: 78, height: 116, z: 10, anchorX: 0.5, anchorY: 0.08, assetId: "npc-farmer-vaclav" });
+    const player = this.renderer.createSprite(playerTexture, { width: 82, height: 108, z: 12, anchorX: 0.5, anchorY: 0.08, assetId: "player-hunter-walk" });
+    const farmer = this.renderer.createSprite(farmerTexture, { width: 82, height: 108, z: 12, anchorX: 0.5, anchorY: 0.08, assetId: "npc-farmer-vaclav" });
     this.renderer.bindEntity(this.playerEntity, player, "actors");
     this.renderer.bindEntity(this.farmerEntity, farmer, "actors");
-    const marker = this.modelFactory.bind(this.digEntity, this.model("model-chlum-field-marker"), { assetId: "model-chlum-field-marker", layer: "props", rotationX: Math.PI / 2, scale: 48, z: 3 });
+    const marker = this.modelFactory.bind(this.searchEntity, this.model("model-chlum-field-marker"), { assetId: "model-chlum-field-marker", layer: "props", rotationX: Math.PI / 2, scale: 48, z: 3 });
     marker.visible = false;
     this.modelFactory.bind(this.tractorEntity, this.model("model-chlum-tractor-no-driver"), { assetId: "model-chlum-tractor-no-driver", layer: "actors", rotationX: Math.PI / 2, scale: 44, z: 8 });
   }
@@ -223,8 +232,9 @@ export class ChlumScene {
     const playerData = this.app.world.get(this.playerEntity, "player");
     const move = input.axes.move ?? { x: 0, y: 0 };
     const speed = playerData?.speed ?? 220;
-    player.x = clamp(player.x + (move.x ?? 0) * speed * dt, this.level.bounds.x + 28, this.level.bounds.x + this.level.bounds.width - 28);
-    player.y = clamp(player.y + (move.y ?? 0) * speed * dt, this.level.bounds.y + 28, this.level.bounds.y + this.level.bounds.height - 28);
+    const walkable = this.level.walkable ?? this.level.bounds;
+    player.x = clamp(player.x + (move.x ?? 0) * speed * dt, walkable.x + 28, walkable.x + walkable.width - 28);
+    player.y = clamp(player.y + (move.y ?? 0) * speed * dt, walkable.y + 28, walkable.y + walkable.height - 28);
     const tractor = this.app.world.get(this.tractorEntity, "transform");
     const patrol = this.app.world.get(this.tractorEntity, "patrol");
     tractor[patrol.axis] += patrol.direction * patrol.speed * dt;
@@ -239,11 +249,6 @@ export class ChlumScene {
   }
 
   updateGameplay(dt, _time, input) {
-    if (this.session.state.phase === "digging" && this.modal === "dig") {
-      const state = this.dig.update(dt);
-      if (state) this.screens.updateDig({ ...state, marker: state.position, requiredHits: DIG_REQUIRED_HITS, sweetMin: this.dig.sweetMin, sweetMax: this.dig.sweetMax });
-      return;
-    }
     if (this.session.state.phase !== "playing" || this.modal || this.resultShown) return;
     const danger = this.danger.update(this.app.world, this.playerEntity, this.collisions, dt);
     if (danger.caught) {
@@ -261,22 +266,31 @@ export class ChlumScene {
     const available = this.interactions.update(this.app.world, this.playerEntity, input.actions.action?.pressed === true);
     this.availableInteraction = available;
     if (available?.performed) this.performInteraction(available);
+    else if (input.actions.action?.pressed === true && this.radarEnabled && !this.surfaceSearched) this.activateRadar();
   }
 
   updateObjectives() {
-    const objective = this.objectives.update({ digHits: this.digHits });
+    const objective = this.objectives.update({ searched: this.surfaceSearched });
     if (objective.complete && !this.resultShown) this.showResult();
   }
 
   updateAnimations(dt) {
     if (this.session.state.phase === "playing" && !this.modal) this.app.animations.update(this.app.world, dt);
+    this.updateNpcIdleAnimation(dt);
+  }
+
+  updateNpcIdleAnimation(dt) {
+    if (!this.farmerEntity || this.session.state.phase !== "playing" || this.modal) return;
+    this.npcIdleTime += dt;
+    const idleScale = 0.98 + 0.02 * Math.sin(this.npcIdleTime * 2 * Math.PI);
+    const visual = this.renderer.getVisual(this.farmerEntity);
+    if (visual) visual.scale.set(idleScale, idleScale, 1);
   }
 
   updateHud() { this.emitHud(false); }
 
   performInteraction(available) {
     if (available.interaction.kind === "permission") this.showPermissionDialog();
-    else if (available.interaction.kind === "dig") this.startDig();
     else if (available.interaction.kind === "collect") this.collectFinding();
   }
 
@@ -292,9 +306,8 @@ export class ChlumScene {
       onConfirm: () => {
         this.objectives.grantPermission();
         this.app.world.get(this.farmerEntity, "interaction").enabled = false;
-        this.app.world.get(this.digEntity, "interaction").enabled = true;
-        const marker = this.renderer.objectByEntity.get(this.digEntity);
-        if (marker) marker.visible = true;
+        this.radarEnabled = true;
+        this.radarMessage = "Radar je připravený. Stiskni AKCI a sleduj sílu signálu.";
         this.modal = null;
         this.screens.play();
         this.app.input.reset("dialog-confirm");
@@ -303,36 +316,40 @@ export class ChlumScene {
     });
   }
 
-  startDig() {
-    if (this.dig.start("chlum-dig-site") !== true) return;
-    this.modal = "dig";
-    this.session.setPhase("digging");
-    this.app.input.reset("dig-open");
-    this.screens.showDig({ title: "Tři zásahy do rytmu", buttonLabel: "AKCE", hits: 0, marker: 0, requiredHits: DIG_REQUIRED_HITS, sweetMin: this.dig.sweetMin, sweetMax: this.dig.sweetMax, onAction: () => this.strikeDig() });
-  }
-
-  strikeDig() {
-    const result = this.dig.strike();
-    if (!result) return;
-    this.digHits = result.hits;
-    this.screens.updateDig({ ...result, marker: result.position, requiredHits: DIG_REQUIRED_HITS, sweetMin: this.dig.sweetMin, sweetMax: this.dig.sweetMax, info: result.hit ? `Zásah ${result.hits}/${DIG_REQUIRED_HITS}` : "Mimo rytmus — zkus to znovu." });
-    if (!result.complete) return;
-    this.dig.finish();
-    this.app.world.get(this.digEntity, "interaction").enabled = false;
+  activateRadar() {
+    if (!this.radarEnabled || this.surfaceSearched) return;
+    const player = this.app.world.get(this.playerEntity, "transform");
+    const searchTransform = this.app.world.get(this.searchEntity, "transform");
+    const searchSpot = this.app.world.get(this.searchEntity, "searchSpot");
+    const distance = Math.hypot(player.x - searchTransform.x, player.y - searchTransform.y);
+    this.radarPulseCount += 1;
+    if (distance > searchSpot.detectionRange) {
+      this.radarMessage = distance <= 480
+        ? "Radar: silný signál. Vltavín je velmi blízko."
+        : distance <= 760
+          ? "Radar: slabý signál. Pokračuj v hledání po poli."
+          : "Radar: bez signálu. Přesuň se dál od okraje pole.";
+      this.app.input.reset("radar-pulse");
+      this.emitHud(true);
+      return;
+    }
+    this.surfaceSearched = true;
+    this.radarEnabled = false;
+    searchSpot.searched = true;
+    this.radarMessage = "Radar odhalil vltavín. Přibliž se a stiskni SEBRAT.";
     this.spawnFinding();
-    this.modal = null;
-    this.session.setPhase("playing");
-    this.screens.play();
-    this.app.input.reset("dig-complete");
+    this.availableInteraction = null;
+    this.interactions.clear();
+    this.app.input.reset("surface-searched");
     this.emitHud(true);
   }
 
   spawnFinding() {
     if (this.findingEntity !== null) return;
-    const digTransform = this.app.world.get(this.digEntity, "transform");
+    const searchTransform = this.app.world.get(this.searchEntity, "transform");
     this.findingEntity = this.app.world.createEntity({
-      transform: { x: digTransform.x + 22, y: digTransform.y + 12, rotation: 0, scale: 1 },
-      previousTransform: { x: digTransform.x + 22, y: digTransform.y + 12, rotation: 0, scale: 1 },
+      transform: { x: searchTransform.x + 22, y: searchTransform.y + 12, rotation: 0, scale: 1 },
+      previousTransform: { x: searchTransform.x + 22, y: searchTransform.y + 12, rotation: 0, scale: 1 },
       interaction: { kind: "collect", label: "SEBRAT", action: "action", range: 70, priority: 80, enabled: true }
     });
     this.externalIdByEntity.set(this.findingEntity, "chlum-finding-1");
@@ -346,11 +363,14 @@ export class ChlumScene {
   collectFinding() {
     if (this.findingEntity === null) return;
     const entity = this.findingEntity;
-    this.objectives.recordFinding(createChlumFinding("chlum-standard", "chlum-finding-1"));
+    const surfaceQuality = this.rng();
+    const variant = resolveVariant(CHLUM_FINDING_VARIANTS, surfaceQuality, this.rng);
+    this.objectives.recordFinding(createFinding(variant, "chlum-finding-1", "chlum", surfaceQuality));
     this.renderer.unbindEntity(entity);
     this.app.world.destroyEntity(entity);
     this.externalIdByEntity.delete(entity);
     this.findingEntity = null;
+    this.radarMessage = "Vltavín byl bezpečně sebrán.";
     this.availableInteraction = null;
     this.interactions.clear();
     this.app.input.reset("finding-collected");
@@ -369,7 +389,7 @@ export class ChlumScene {
       score: this.session.state.score,
       stats: [
         { label: "POVOLENÍ", value: "ANO" },
-        { label: "ZÁSAHY", value: `${this.digHits}/3` },
+        { label: "RADAR", value: `${this.radarPulseCount}×` },
         { label: "NÁLEZY", value: this.session.state.findings.length }
       ],
       buttonLabel: "ZPĚT DO MENU",
@@ -380,7 +400,8 @@ export class ChlumScene {
   pause() {
     this.session.setPhase("paused");
     this.app.input.reset("pause-overlay");
-    this.screens.showPause({ onResume: () => this.resume(), onMenu: () => this.app.changeScene("title").catch(error => console.error("Scene transition:", error)) });
+    const hud = this.hudModel();
+    this.screens.showPause({ onResume: () => this.resume(), onMenu: () => this.app.changeScene("title").catch(error => console.error("Scene transition:", error)), placeLabel: hud.placeLabel, objective: hud.objective, progress: hud.objectiveProgress });
     this.emitHud(true);
   }
 
@@ -394,29 +415,30 @@ export class ChlumScene {
   setCameraToPlayer() {
     if (this.playerEntity === null) return;
     const transform = this.app.world.get(this.playerEntity, "transform");
-    this.renderer.setCameraCenter(transform.x, transform.y, 0.92);
+    setBoundedCameraCenter(this.renderer, this.level.bounds, transform.x, transform.y, 0.92);
   }
 
-  objectiveSnapshot() { return this.objectives.snapshot({ digHits: this.digHits }); }
+  objectiveSnapshot() { return this.objectives.snapshot({ searched: this.surfaceSearched }); }
 
   hudModel() {
     const objective = this.objectiveSnapshot();
     const available = this.availableInteraction;
     const danger = this.session.state.danger / 100;
-    let hint = objective.text;
+    let hint = this.radarMessage || objective.text;
     if (this.session.state.phase === "paused") hint = "Výprava čeká.";
-    else if (available) hint = available.interaction.label === "MLUVIT" ? "Václav ti může dát povolení." : available.interaction.label === "KOPAT" ? "Tady je vhodné místo ke kopání." : "Vltavín leží na povrchu.";
+    else if (available) hint = available.interaction.label === "MLUVIT" ? "Václav ti může dát povolení." : "Vltavín leží na povrchu.";
     return {
       missionNumber: this.level.order + 1,
       placeLabel: this.level.name,
       objective: objective.text,
+      objectiveProgress: objective.progress,
       findings: this.session.state.findings.length,
       danger,
-      dangerMessage: danger >= 0.75 ? "TRAKTOR JE BLÍZKO" : "",
+      dangerMessage: danger >= 0.75 ? "TRAKTOR JE BLÍZKO · OBEJDI HO" : "",
       hint,
-      actionReady: Boolean(available && !this.modal && this.session.state.phase === "playing"),
-      actionLabel: available?.interaction.label ?? "AKCE",
-      actionIcon: available?.interaction.kind === "permission" ? "…" : available?.interaction.kind === "dig" ? "⛏" : available?.interaction.kind === "collect" ? "◆" : "◉"
+      actionReady: Boolean((available || this.radarEnabled) && !this.modal && this.session.state.phase === "playing"),
+      actionLabel: available?.interaction.label ?? (this.radarEnabled ? "RADAR" : "AKCE"),
+      actionIcon: available?.interaction.kind === "permission" ? "…" : available?.interaction.kind === "collect" ? "◆" : this.radarEnabled ? "⌕" : "◉"
     };
   }
 
@@ -439,8 +461,8 @@ export class ChlumScene {
       objective: this.objectiveSnapshot(),
       runtime: {
         modal: this.modal,
-        digHits: this.digHits,
-        dig: this.dig.snapshot(),
+        searched: this.surfaceSearched,
+        radar: { enabled: this.radarEnabled, pulses: this.radarPulseCount, message: this.radarMessage },
         resultShown: this.resultShown,
         player: player ? { x: player.x, y: player.y } : null,
         tractor: tractor ? { x: tractor.x, y: tractor.y } : null,
@@ -472,7 +494,6 @@ export class ChlumScene {
   async exit() {
     this.modal = null;
     this.interactions.clear();
-    this.dig.cancel();
     this.danger.reset();
     this.app.input.reset("chlum-exit");
     this.destroyVisualWorld();

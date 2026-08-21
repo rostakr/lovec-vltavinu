@@ -11,17 +11,23 @@ import {
 
 const level = getLevelDefinition("besednice");
 
-test("Besednice data contains one player, exactly three clues, one locked dig site and Karel", () => {
+test("Besednice data contains guide, player, exactly three gated clues, one locked dig site and Karel", () => {
   const ids = BESEDNICE_ENTITY_DEFINITIONS.map(entity => entity.id);
   assert.equal(new Set(ids).size, ids.length);
-  assert.deepEqual(ids, ["player", ...BESEDNICE_TRACE_IDS, "besednice-hedgehog", "crystal-karel"]);
+  assert.deepEqual(ids, ["player", "besednice-guide", ...BESEDNICE_TRACE_IDS, "besednice-hedgehog", "crystal-karel"]);
   assert.equal(BESEDNICE_TRACE_IDS.length, 3);
+
+  const guide = getBesedniceEntityDefinition("besednice-guide");
+  assert.equal(guide.components.interaction.kind, "talk");
+  assert.equal(guide.components.interaction.action, CONTEXT_ACTION);
+  assert.equal(guide.components.interaction.enabled, true);
+  assert.equal(guide.components.sprite.assetId, "npc-rival-karel");
 
   for (const [index, id] of BESEDNICE_TRACE_IDS.entries()) {
     const clue = getBesedniceEntityDefinition(id);
     assert.equal(clue.components.interaction.kind, "discover");
     assert.equal(clue.components.interaction.action, CONTEXT_ACTION);
-    assert.equal(clue.components.interaction.enabled, true);
+    assert.equal(clue.components.interaction.enabled, false);
     assert.equal(clue.components.clue.index, index);
     assert.equal(clue.components.clue.discovered, false);
     assert.equal(clue.components.model.assetId, "model-besednice-trace-marker");
@@ -39,7 +45,7 @@ test("Besednice data contains one player, exactly three clues, one locked dig si
   assert.deepEqual(karel.components.boss, {
     id: "crystal-karel",
     state: "inactive",
-    speed: 105,
+    speed: 150,
     stopRange: 58,
     started: false,
     defeated: false
@@ -73,6 +79,6 @@ test("Besednice definitions remain deeply frozen serializable data", () => {
   assert.equal(Object.isFrozen(BESEDNICE_ENTITY_DEFINITIONS[0].components), true);
   assert.equal(Object.isFrozen(getBesedniceEntityDefinition("crystal-karel").components.boss), true);
   const parsed = JSON.parse(JSON.stringify({ entities: BESEDNICE_ENTITY_DEFINITIONS, findings: BESEDNICE_FINDING_VARIANTS }));
-  assert.equal(parsed.entities.length, 6);
+  assert.equal(parsed.entities.length, 7);
   assert.equal(parsed.findings.length, 1);
 });

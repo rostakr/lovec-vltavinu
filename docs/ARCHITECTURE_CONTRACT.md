@@ -1,6 +1,6 @@
 # Závazný architektonický kontrakt
 
-Verze kontraktu: 1.0 · 22. 7. 2026
+Verze kontraktu: 1.1 · 31. 7. 2026
 
 Tento dokument je normativní pro cílovou Three.js verzi. `docs/architecture-v6.md` zůstává užitečným historickým migračním popisem; při rozporu platí tento kontrakt a `AGENTS.md`.
 
@@ -20,7 +20,6 @@ Tento dokument je normativní pro cílovou Three.js verzi. `docs/architecture-v6
 │   │   ├── AssetLoader.js
 │   │   └── InputManager.js
 │   ├── data/
-│   │   ├── assets.js
 │   │   ├── levels.js
 │   │   ├── dialogues.js
 │   │   └── balance.js
@@ -46,6 +45,7 @@ Tento dokument je normativní pro cílovou Three.js verzi. `docs/architecture-v6
 │   │   └── LifetimeSystem.js
 │   ├── render/
 │   │   ├── ThreeRenderer.js
+│   │   ├── HybridRenderer.js
 │   │   ├── SpriteFactory.js
 │   │   ├── ModelFactory.js
 │   │   └── CameraController.js
@@ -83,10 +83,21 @@ Dočasné `game.js`, `runtime-stability.js`, Canvas renderer a legacy save soubo
 | `World` | entity ID, komponentová data a dotazy | obsahovat renderer či DOM reference |
 | Gameplay systémy | pravidla interakcí, kopání, nebezpečí, bossů a cílů | vytvářet Three.js objekty |
 | Obecné systémy | pohyb, kolize, animace a lifetime | měnit quest texty |
-| `ThreeRenderer` | WebGLRenderer, kamera, vrstvy, sync ECS→Three a dispose | rozhodovat o výsledku kolize nebo úkolu |
+| `ThreeRenderer` | jediná produkční renderer instance, kamera, vrstvy, sync ECS→Three a dispose | rozhodovat o výsledku kolize nebo úkolu |
+| `HybridRenderer` | interní, izolovaně testovatelný implementační základ a jediný konstrukční bod `THREE.WebGLRenderer` | být přímo instancován v produkčním stromu nebo použit jako druhá produkční cesta |
 | UI controllery | odvozovat a diffovat HUD/screen model do DOM | být autoritou herního stavu |
 | `AudioEngine` | audio po gestu, hudební přechody, pause/resume | spouštět questy |
 | `GameSession` | stav aktuálního průchodu pouze v paměti | localStorage, migrace nebo inventářové UI |
+
+## Renderer ownership kontrakt
+
+- `src/bootstrap.js` vytváří právě jednu instanci `ThreeRenderer` a nevytváří žádný jiný renderer.
+- `ThreeRenderer` je jediný povolený potomek `HybridRenderer` v produkčním stromu.
+- `HybridRenderer` je interní, ale izolovaně testovatelný základ; přímá produkční instance `new HybridRenderer(...)` je zakázána a odmítnuta statickým validátorem produkčního importního grafu.
+- Jediný výraz `new THREE.WebGLRenderer(...)` v produkčním stromu smí být v `src/render/HybridRenderer.js`.
+- Tato jediná instance vlastní jediný canvas, jednu ortografickou kameru, render vrstvy a `dispose()` WebGL rendereru.
+- `GameApp` vlastní jediný fixed-step loop; renderer nesmí vytvářet paralelní `requestAnimationFrame` smyčku.
+- Statický validátor musí odmítnout druhý konstrukční bod WebGL rendereru, přímou produkční instanci `HybridRenderer`, dalšího potomka `HybridRenderer` a další renderer v bootstrapu.
 
 ## Datové struktury
 
@@ -102,7 +113,7 @@ Dočasné `game.js`, `runtime-stability.js`, Canvas renderer a legacy save soubo
 }
 ```
 
-ID je stabilní a unikátní. URL je relativní k nasazenému rootu GitHub Pages. Každý runtime asset musí být v manifestu.
+`assets/manifests/assets.json` je skutečná a jediná autoritativní manifestová databáze runtime assetů. ID je stabilní a unikátní. URL je relativní k nasazenému rootu GitHub Pages. Každý runtime asset musí být v tomto manifestu; `src/data` neobsahuje paralelní asset registry.
 
 ### Level definition
 
@@ -123,6 +134,10 @@ ID je stabilní a unikátní. URL je relativní k nasazenému rootu GitHub Pages
 ```
 
 `LEVEL_ORDER` je přesně `chlum`, `nesmen`, `besednice`, `slavia`.
+
+Chlum po získání povolení zpřístupní globální kontextovou akci `RADAR`. Opakované stisknutí stejného akčního vstupu hlásí sílu signálu; v dosahu skrytého cíle odhalí povrchový vltavín a akce se u nálezu změní na `SEBRAT`. Chlum neotevírá kopací modal. Rytmické kopání se třemi úspěšnými zásahy začíná až v Nesměni a používá tentýž kontextový vstup.
+
+Na zařízení s dotykem ovládá pohyb `#moveZone` a akci `#actionButton`. Klávesnicový vstup zůstává WASD/šipky pro pohyb a `E` pro kontextovou akci; oba adaptéry zapisují pouze do jednoho sdíleného `InputManageru`.
 
 ### Entity specification
 
@@ -271,7 +286,7 @@ Při pauze, skrytí stránky, ztrátě fokusu, otočení zařízení a změně s
 ## Render a asset pravidla
 
 - Three.js se používá z lokálně připnuté závislosti, nikoli z několika CDN.
-- Existuje právě jeden `WebGLRenderer` a jeden vlastník jeho `dispose()`.
+- Existuje právě jeden `WebGLRenderer`, jeden canvas, jedna ortografická kamera a jeden vlastník jejich lifecycle a `dispose()`.
 - Transparentní sprity používají atlas, alpha test a omezený počet materiálů.
 - GLB má definovaný pivot, měřítko, rozpočet trojúhelníků a textur.
 - Statické opakované objekty používají instancing nebo sdílenou geometrii/material.
@@ -287,4 +302,5 @@ Při pauze, skrytí stránky, ztrátě fokusu, otočení zařízení a změně s
 - Eventy mají názvy a payloady z této tabulky.
 - Neexistuje nový save/import/export ani inventářový modul.
 - Scene transition nezanechá aktivní vstup, listener, audio track nebo GPU objekt.
+- Renderer ownership testy potvrzují jediný konstrukční bod, jediný bootstrap renderer a zákaz přímé produkční instance `HybridRenderer`.
 - Unit, validační a mobilní smoke testy jsou zelené.

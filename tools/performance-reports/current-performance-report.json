@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "label": "current",
+  "generatedAt": "2026-07-30T16:55:00.000Z",
+  "headSha": "0cb496ba671c878f2e9bb08ef21d62c2686c469d",
+  "source": {
+    "workflowRunId": 30562890016,
+    "workflowRunNumber": 1065,
+    "artifactId": 8767863070,
+    "artifactName": "playwright-report",
+    "artifactDigest": "sha256:a0758ff6e20a67a09ac3e5698953b0595682578e6b0a765bea06e7573a3a4c72"
+  },
+  "fullFlowTimeoutMs": 480000,
+  "profiles": {
+    "desktop-chromium": {
+      "fullFlow": { "testDurationMs": 310909, "withinLimit": true },
+      "comparison": { "baselineDurationMs": 305160, "deltaMs": 5749, "deltaPercent": 1.884 },
+      "probe": { "status": "not-measured", "reason": "Checkout/browser probe could not be executed in the agent runtime because outbound DNS to GitHub was unavailable." }
+    },
+    "iphone-portrait": {
+      "fullFlow": { "testDurationMs": 471340, "withinLimit": true },
+      "comparison": { "baselineDurationMs": 476129, "deltaMs": -4789, "deltaPercent": -1.006 },
+      "probe": { "status": "not-measured", "reason": "Checkout/browser probe could not be executed in the agent runtime because outbound DNS to GitHub was unavailable." }
+    },
+    "iphone-landscape": {
+      "fullFlow": { "testDurationMs": 363042, "withinLimit": true },
+      "comparison": { "baselineDurationMs": 363913, "deltaMs": -871, "deltaPercent": -0.239 },
+      "probe": { "status": "not-measured", "reason": "Checkout/browser probe could not be executed in the agent runtime because outbound DNS to GitHub was unavailable." }
+    }
+  },
+  "summary": {
+    "desktopRegressedMs": 5749,
+    "portraitImprovedMs": 4789,
+    "landscapeImprovedMs": 871,
+    "allProfilesWithin480000Ms": true
+  },
+  "limitations": [
+    "DPR was not measured.",
+    "Internal renderer resolution was not measured.",
+    "Audio resource timing was not measured.",
+    "Frame-time p50/p95 was not measured."
+  ]
+}

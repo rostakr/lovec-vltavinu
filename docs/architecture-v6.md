@@ -1,5 +1,11 @@
 # Lovec vltavínů 6.0 – technická architektura
 
+> **Historický dokument.** Popisuje plán migrace z Canvas monolitu 5.2 na modulární runtime 6.0.
+> Migrace je dokončená a V7 přestavba na něj navázala. Vrstvy `GameState`, `LegacySaveAdapter`
+> a `LegacyDataAdapter` zmíněné v etapě B byly po převodu všech čtyř lokalit odstraněny
+> (integrační krok 6 v `AGENTS.md`); cílová architektura žádný save systém nemá.
+> Závazné jsou dnes `AGENTS.md`, `docs/ARCHITECTURE_CONTRACT.md` a `docs/PROJECT_CONTROL.md`.
+
 ## 1. Výchozí stav
 
 Veřejná verze 5.2 zůstává během migrace hratelným produkčním základem. Její `game.js` obsahuje v jednom IIFE stav hry, definice levelů, vstupy, audio, gameplay, kolize, 2D Canvas rendering, UI vazby a debug API.

@@ -6,6 +6,20 @@ export function prepareSpriteTexture(texture, cloneTexture = true) {
   return spriteTexture;
 }
 
+export function prepareTerrainPlateTexture(texture, THREE, cloneTexture = true) {
+  if (!texture) return null;
+  const plateTexture = cloneTexture ? texture.clone?.() ?? texture : texture;
+  if (!Number.isInteger(plateTexture.channel) || plateTexture.channel < 0) plateTexture.channel = 0;
+  if (THREE?.ClampToEdgeWrapping !== undefined) {
+    plateTexture.wrapS = THREE.ClampToEdgeWrapping;
+    plateTexture.wrapT = THREE.ClampToEdgeWrapping;
+  }
+  plateTexture.repeat?.set?.(1, 1);
+  plateTexture.offset?.set?.(0, 0);
+  if (plateTexture !== texture) plateTexture.needsUpdate = true;
+  return plateTexture;
+}
+
 export class HybridRenderer {
   constructor(options = {}) {
     const THREE = options.three;
@@ -37,12 +51,14 @@ export class HybridRenderer {
       ground: new THREE.Group(),
       props: new THREE.Group(),
       actors: new THREE.Group(),
+      foreground: new THREE.Group(),
       effects: new THREE.Group()
     };
     this.layers.ground.renderOrder = 0;
     this.layers.props.renderOrder = 10;
     this.layers.actors.renderOrder = 20;
-    this.layers.effects.renderOrder = 30;
+    this.layers.foreground.renderOrder = 30;
+    this.layers.effects.renderOrder = 40;
     for (const layer of Object.values(this.layers)) this.scene.add(layer);
 
     this.width = 1;
@@ -118,6 +134,38 @@ export class HybridRenderer {
       sprite.userData.textureReady = Promise.resolve(material.map);
     }
     return sprite;
+  }
+
+  createTerrainPlate(textureSource, options = {}) {
+    const width = Math.max(1, Number(options.width) || 1);
+    const height = Math.max(1, Number(options.height) || 1);
+    const material = new this.THREE.MeshBasicMaterial({
+      map: null,
+      transparent: options.transparent === true,
+      opacity: options.opacity ?? 1,
+      depthWrite: options.depthWrite !== false,
+      depthTest: options.depthTest !== false,
+      color: options.color ?? 0xffffff
+    });
+    const plate = new this.THREE.Mesh(new this.THREE.PlaneGeometry(width, height), material);
+    const originX = Number(options.x) || 0;
+    const originY = Number(options.y) || 0;
+    plate.position.set(originX + width / 2, originY + height / 2, options.z ?? -10);
+    plate.userData.assetId = options.assetId ?? null;
+    plate.userData.terrainPlate = true;
+
+    const applyTexture = texture => {
+      material.map = prepareTerrainPlateTexture(texture, this.THREE, options.cloneTexture !== false);
+      material.needsUpdate = true;
+      return material.map;
+    };
+    if (textureSource?.then instanceof Function) {
+      plate.userData.textureReady = Promise.resolve(textureSource).then(applyTexture);
+    } else {
+      applyTexture(textureSource);
+      plate.userData.textureReady = Promise.resolve(material.map);
+    }
+    return plate;
   }
 
   createGroup(options = {}) {

@@ -9,6 +9,7 @@ const isNullableId = value => value === null || isId(value);
 const isFiniteNumber = value => Number.isFinite(value);
 const isNonNegative = value => isFiniteNumber(value) && value >= 0;
 const isLiteralThree = value => value === 3;
+const isBoolean = value => typeof value === "boolean";
 const isString = value => typeof value === "string";
 const isNullableString = value => value === null || isString(value);
 const isObject = value => isPlainObject(value);
@@ -49,7 +50,8 @@ export const EVENT_CONTRACTS = Object.freeze({
   "dig:start": shape({ spot: isId, requiredHits: isLiteralThree }),
   "dig:hit": shape({ spot: isId, hit: isNonNegative, requiredHits: isLiteralThree, quality: isFiniteNumber }),
   "dig:miss": shape({ spot: isId, misses: isNonNegative }),
-  "dig:complete": shape({ spot: isId, hits: isLiteralThree }),
+  "dig:complete": shape({ spot: isId, hits: isLiteralThree }, { misses: isNonNegative, clean: isBoolean }),
+  "dig:clean": shape({ spot: isId }),
 
   "finding:collected": shape({
     findingId: isId,
